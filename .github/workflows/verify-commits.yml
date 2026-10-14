@@ -1,0 +1,79 @@
+name: verify-commits
+# git-dod :: advisory layer.
+# Re-runs the repo's own .githooks/commit-msg against every non-merge commit in
+# the PR and reports non-conforming messages as NON-BLOCKING warnings
+# (annotations + a run summary). It never fails the check — it only nags. The
+# hard gate is the local hook; this surfaces commits authored with --no-verify or
+# before the rule landed.
+#
+# Do NOT add this to branch-protection required checks: it is always green by design.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+concurrency:
+  group: verify-commits-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-commits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout (full history for the PR range)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify commit messages (advisory — never blocks)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          if [ ! -f .githooks/commit-msg ]; then
+            echo "::warning::.githooks/commit-msg not found — git-dod not installed on this branch (skipping)"
+            exit 0
+          fi
+
+          range="$BASE_SHA..$HEAD_SHA"
+          echo "Checking non-merge commits in $range"
+
+          flagged=0
+          checked=0
+          {
+            echo "## git-dod commit check (advisory)"
+            echo ""
+            echo "| | commit | subject |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for sha in $(git rev-list --no-merges "$range"); do
+            checked=$((checked + 1))
+            msg="$(mktemp)"
+            git log -1 --format=%B "$sha" > "$msg"
+            subject="$(git log -1 --format=%s "$sha")"
+            short="$(git rev-parse --short "$sha")"
+            if reason="$(bash .githooks/commit-msg "$msg" 2>&1)"; then
+              echo "  ✓ $short  $subject"
+              echo "| ✓ | \`$short\` | $subject |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning title=commit-msg::$short  $subject — $(printf '%s' "$reason" | tr '\n' ' ')"
+              echo "| ⚠️ | \`$short\` | $subject |" >> "$GITHUB_STEP_SUMMARY"
+              flagged=$((flagged + 1))
+            fi
+            rm -f "$msg"
+          done
+
+          {
+            echo ""
+            echo "Checked **$checked** commit(s); **$flagged** flagged."
+            if [ "$flagged" -gt 0 ]; then
+              echo ""
+              echo "> ⚠️ Advisory only — this check does **not** block merge. \`feat\`/\`fix\` should carry \`Why:\`/\`Expected:\` lines. Reword via \`git rebase -i\`, or use \`[skip-checks]\` for intentional exceptions."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Checked $checked commit(s); $flagged flagged. (advisory — exiting 0)"
+          exit 0
