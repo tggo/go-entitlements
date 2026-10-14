@@ -76,3 +76,13 @@ separate worklog file.
 
 Full playbook: skill `git-dod` (`.claude/skills/git-dod/SKILL.md`).
 <!-- git-dod:end -->
+
+## Inbox (optional store-first layer)
+
+- `inbox` holds the types, `ProcessStored` and the status rules; `inbox/memory` (tests and demos only) implements it,
+  `inboxtest.Run` is the conformance suite a consumer's durable Inbox must pass; there is deliberately no Postgres inbox. `httpx.WithInbox` is the handler side. Default behaviour must stay
+  "parse and apply inside the request": new inbox code never changes that path.
+- A status is final unless it is `received` or `failed`; `ProcessStored` returns an error exactly for the
+  non-final ones. A new outcome needs a status, a row in the README and a case in the aggregate-precedence test.
+- Never store `Authorization` or other credentials: `inbox.SafeHeaders` is an allowlist, every implementation
+  calls it in `Save`, and the conformance suite checks it.

@@ -25,15 +25,27 @@ type appleHandler struct {
 // endpoint. Parsing Apple notifications involves no I/O, so any parse error
 // other than TEST/unsupported types is permanent: 401 for a failed signature,
 // 400 for anything else.
-func NewAppleHandler(parser AppleParser, svc Processor, opts ...Option) http.Handler {
+//
+// With WithInbox the handler only stores the verified-at-the-edge request; the
+// constructor then requires WithRoute (ErrRouteRequired, ErrRouteInvalid).
+func NewAppleHandler(parser AppleParser, svc Processor, opts ...Option) (http.Handler, error) {
 	cfg := newConfig(opts)
-	return &appleHandler{parser: parser, svc: svc, log: cfg.log.With("handler", "apple"), cfg: cfg}
+	if err := cfg.checkInboxRoute(); err != nil {
+		return nil, err
+	}
+	return &appleHandler{parser: parser, svc: svc, log: cfg.log.With("handler", "apple"), cfg: cfg}, nil
 }
 
 func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer recoverPanic(w, h.log)
 	body, ok := readBody(w, r, h.cfg.maxBody, h.log)
 	if !ok {
+		return
+	}
+	if h.cfg.inbox != nil {
+		// No id: the body is not verified yet, so it must not pick its own
+		// idempotency key. Service dedupes after verification.
+		saveToInbox(w, r, h.cfg, entitlements.SourceApple, "", body, h.log)
 		return
 	}
 	ev, err := h.parser.Parse(body)

@@ -122,7 +122,7 @@ func TestWithLoggerNilKeepsDiscard(t *testing.T) {
 	t.Parallel()
 	parser := mocks.NewMockAppleParser(t)
 	parser.EXPECT().Parse(mock.Anything).Return(entitlements.Event{}, errors.New("boom"))
-	h := httpx.NewAppleHandler(parser, mocks.NewMockProcessor(t), httpx.WithLogger(nil), nil)
+	h := mustApple(t, parser, mocks.NewMockProcessor(t), httpx.WithLogger(nil), nil)
 
 	assert.Equal(t, http.StatusBadRequest, post(h, "x").Code)
 }

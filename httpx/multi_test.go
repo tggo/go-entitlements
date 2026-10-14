@@ -141,7 +141,7 @@ func TestPanicsBecome500WithAStack(t *testing.T) {
 		"apple parser": func(t *testing.T, log *slog.Logger) http.Handler {
 			parser := mocks.NewMockAppleParser(t)
 			parser.EXPECT().Parse(mock.Anything).RunAndReturn(func([]byte) (entitlements.Event, error) { panic("apple parser blew up") })
-			return httpx.NewAppleHandler(parser, mocks.NewMockProcessor(t), httpx.WithLogger(log))
+			return mustApple(t, parser, mocks.NewMockProcessor(t), httpx.WithLogger(log))
 		},
 		"apple processor": func(t *testing.T, log *slog.Logger) http.Handler {
 			parser := mocks.NewMockAppleParser(t)
@@ -151,7 +151,7 @@ func TestPanicsBecome500WithAStack(t *testing.T) {
 				func(context.Context, entitlements.Event) (*entitlements.Entitlement, error) {
 					panic("apple processor blew up")
 				})
-			return httpx.NewAppleHandler(parser, svc, httpx.WithLogger(log))
+			return mustApple(t, parser, svc, httpx.WithLogger(log))
 		},
 	}
 	for name, build := range cases {

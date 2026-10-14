@@ -116,7 +116,9 @@ func (s *E2ESuite) SetupTest() {
 	s.Require().NoError(err)
 
 	mux := http.NewServeMux()
-	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(appleParser, svc, httpx.WithLogger(log)))
+	appleHandler, err := httpx.NewAppleHandler(appleParser, svc, httpx.WithLogger(log))
+	s.Require().NoError(err)
+	mux.Handle("/webhooks/apple", appleHandler)
 	googleHandler, err := httpx.NewGoogleHandler(googleParser, svc, httpx.WithLogger(log), httpx.WithInsecureNoAuth()) // the test posts directly, with no Pub/Sub token
 	s.Require().NoError(err)
 	mux.Handle("/webhooks/google", googleHandler)

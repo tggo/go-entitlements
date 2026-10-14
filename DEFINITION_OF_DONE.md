@@ -127,3 +127,15 @@ the answer — a guessed criterion is worse than none.
 - invalid combinations (undelivered with a percentage, percentage on a subscription, prorated without a percentage) are refused before any request
 - the handler answers 200 when sent, not consented, or past the 12 h deadline; 500 when the responder or Apple failed inside the deadline (production Apple redelivers); 401 bad signature; every other notification reaches the wrapped handler unchanged
 **Verified:** unit tests with a fake App Store, 2026-10-15; not called against the real API.
+
+## Inbox — store first, process later (optional)
+**What:** a handler can save the raw delivery and answer 200; `inbox.ProcessStored` processes it later, from a worker or a replay.
+**DoD:**
+- default behaviour is unchanged: nothing is saved unless `httpx.WithInbox` is passed
+- `Inbox.Save` keeps the body byte for byte and only non-credential headers (`Authorization`, `Cookie`, API keys are dropped); saving an existing ID again changes nothing; an empty, oversized (over 4 MiB) or sourceless item is `ErrInvalid`; returned values never alias stored ones
+- `List` orders by (ReceivedAt, ID) and pages with `After`; `Prune` deletes final items older than the cutoff and never `received` or `failed` ones
+- `ProcessStored` ends an item in exactly one status: processed, duplicate, stale, ignored, unsupported, invalid_signature (final, nil error) or failed (retryable, error returned); a transient store or Play API error, a missing parser, a failed acknowledge or a cancelled context are retryable; re-running a final item changes nothing; an item with several events aggregates as processed > stale > duplicate > unsupported > ignored and a failing event does not stop the others
+- a Google purchase is acknowledged only after all its events are stored, and again on the re-run if the acknowledge failed
+- the library ships only `inbox/memory` (tests and demos, not durable); a consumer brings a durable `Inbox`, which must pass `inboxtest.Run`
+- an item with an invalid signature never reaches `Service.Process`, so it cannot consume a dedupe key: a genuine notification with the same notification UUID is still processed. Apple deliveries are saved without an ID for the same reason
+**Verified:** `inbox` unit tests, `inboxtest` on `inbox/memory`, `FuzzProcessStored` (no panic, status coherent with the error), 37 hand-written mutants of `ProcessStored`, the memory inbox and the header filter all killed, 2026-10-15.

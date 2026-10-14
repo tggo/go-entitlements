@@ -82,3 +82,13 @@ func mustGoogle(tb testing.TB, p httpx.GoogleParser, svc httpx.Processor, log *s
 func gres(ev entitlements.Event) google.Result {
 	return google.Result{Events: []entitlements.Event{ev}}
 }
+
+// mustApple builds an Apple handler and fails the test on a constructor error.
+func mustApple(tb testing.TB, p httpx.AppleParser, svc httpx.Processor, opts ...httpx.Option) http.Handler {
+	tb.Helper()
+	h, err := httpx.NewAppleHandler(p, svc, opts...)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return h
+}

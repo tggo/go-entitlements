@@ -16,6 +16,9 @@
 //     logged at error level because it is either an attack or a bug.
 //   - 405: not a POST. 413: body over the limit.
 //   - 500: a transient failure (store, network fetch). The store retries.
+//
+// Inbox mode (WithInbox) replaces all of the above after the request checks:
+// the raw delivery is saved and answered 200, or 500 if saving failed.
 package httpx
 
 import (
@@ -26,9 +29,11 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"time"
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
+	"github.com/tggo/go-entitlements/inbox"
 )
 
 var (
@@ -38,6 +43,12 @@ var (
 	// ErrDependencyRequired is returned by a handler constructor for a nil
 	// parser or processor.
 	ErrDependencyRequired = errors.New("httpx: parser and processor are required")
+	// ErrRouteRequired is returned by a handler constructor when WithInbox is
+	// set without WithRoute.
+	ErrRouteRequired = errors.New("httpx: WithInbox needs WithRoute (inbox.RouteProduction, RouteSandbox, ...)")
+	// ErrRouteInvalid is returned when WithRoute is not one of the inbox.Route
+	// constants.
+	ErrRouteInvalid = errors.New("httpx: WithRoute is not an inbox.Route constant")
 )
 
 // DefaultMaxBodyBytes is the request body limit when WithMaxBodyBytes is not set.
@@ -54,6 +65,9 @@ type config struct {
 	log      *slog.Logger
 	insecure bool
 	acker    google.Acknowledger
+	inbox    inbox.Inbox
+	onStored func(ctx context.Context, id string)
+	route    inbox.Route
 }
 
 // Option configures a handler.
@@ -97,6 +111,58 @@ func WithAcknowledger(a google.Acknowledger) Option {
 			c.acker = a
 		}
 	}
+}
+
+// WithInbox switches a handler to store-first mode: it verifies the request,
+// saves the raw delivery to inbox, answers 200, and does nothing else. It does
+// not parse and does not call the Processor, so the parser and processor
+// arguments of the constructors may be nil; something else (a worker reading
+// the inbox) does that later.
+//
+// Order: method, body limit and, for Google, push authentication run first,
+// because a Pub/Sub OIDC token expires and cannot be verified later. Only then
+// is the delivery saved. A Save error answers 500 so the sender retries; a
+// success answers 200 (an empty or oversized body, which can never be stored,
+// answers 400). Only the headers inbox.SafeHeaders allows reach the inbox:
+// credentials such as Authorization never do.
+//
+// onStored, if not nil, is called synchronously after the 200 status is set,
+// with the id Save returned and a context detached from the request (so it can
+// outlive the response, for example to wake a worker). It must be quick. A
+// panic in it is logged and never changes the answer. A nil inbox is ignored.
+//
+// With the App Store consumption wrapper (apple/serverapi.NewConsumptionHandler)
+// the wrapper goes OUTSIDE this handler: it must see CONSUMPTION_REQUEST and
+// answer it itself, and the inbox handler stores only what the wrapper
+// forwards.
+func WithInbox(in inbox.Inbox, onStored func(ctx context.Context, id string)) Option {
+	return func(c *config) {
+		if in != nil {
+			c.inbox, c.onStored = in, onStored
+		}
+	}
+}
+
+// WithRoute sets the inbox.Route recorded with each raw delivery. It is
+// required with WithInbox (the constructor returns ErrRouteRequired without it,
+// ErrRouteInvalid for a value that is not one of the inbox.Route constants):
+// there is no default, because a delivery filed under the wrong route is
+// hard to spot later. Mount one handler per route, for example a production
+// and a sandbox endpoint.
+func WithRoute(route inbox.Route) Option { return func(c *config) { c.route = route } }
+
+// checkInboxRoute validates the inbox-mode options.
+func (c config) checkInboxRoute() error {
+	if c.inbox == nil {
+		return nil
+	}
+	switch c.route {
+	case "":
+		return ErrRouteRequired
+	case inbox.RouteProduction, inbox.RouteSandbox, inbox.RouteHistory, inbox.RouteReconcile:
+		return nil
+	}
+	return ErrRouteInvalid
 }
 
 func newConfig(opts []Option) config {
@@ -196,4 +262,55 @@ func recoverPanic(w http.ResponseWriter, log *slog.Logger) {
 	}
 	log.Error("panic while handling notification", "panic", fmt.Sprint(rec), "stack", string(debug.Stack()))
 	http.Error(w, "internal error", http.StatusInternalServerError)
+}
+
+// saveToInbox stores a verified raw delivery and answers. It is the whole
+// request handling in inbox mode.
+//
+// rawID is the idempotency key for Save, or empty. It must only come from a
+// value that is trustworthy at this point: an unverified Apple body must not
+// choose its own id, or a forged body carrying a real notificationUUID would
+// claim it and the genuine delivery would be dropped as a repeat.
+func saveToInbox(w http.ResponseWriter, r *http.Request, cfg config, source entitlements.Source, rawID string, body []byte, log *slog.Logger) {
+	route := cfg.route
+	raw := inbox.Raw{
+		ID:         rawID,
+		Source:     source,
+		Route:      route,
+		Body:       body,
+		Headers:    inbox.SafeHeaders(r.Header),
+		ReceivedAt: time.Now().UTC(),
+	}
+	// Validate first so an item that can never be stored is rejected (400)
+	// whatever the Inbox implementation does with it.
+	var id string
+	err := inbox.Validate(raw)
+	if err == nil {
+		id, err = cfg.inbox.Save(r.Context(), raw)
+	}
+	switch {
+	case errors.Is(err, inbox.ErrInvalid):
+		// An empty or oversized body can never be stored: retrying is pointless.
+		log.Error("delivery cannot be stored, rejected", "error", err, "route", string(route))
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	case err != nil:
+		log.Error("inbox save failed, sender will retry", "error", err, "route", string(route))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	log.Info("delivery stored", "inbox_id", id, "route", string(route), "bytes", len(body))
+	w.WriteHeader(http.StatusOK)
+	if cfg.onStored != nil {
+		callOnStored(context.WithoutCancel(r.Context()), cfg.onStored, id, log)
+	}
+}
+
+func callOnStored(ctx context.Context, fn func(context.Context, string), id string, log *slog.Logger) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Error("inbox onStored hook panicked", "panic", fmt.Sprint(rec), "stack", string(debug.Stack()), "inbox_id", id)
+		}
+	}()
+	fn(ctx, id)
 }

@@ -45,7 +45,11 @@ if err != nil {
 	log.Fatal(err)
 }
 mux := http.NewServeMux()
-mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(verifier), svc, httpx.WithLogger(logger)))
+appleHandler, err := httpx.NewAppleHandler(apple.NewParser(verifier), svc, httpx.WithLogger(logger))
+if err != nil {
+	log.Fatal(err)
+}
+mux.Handle("/webhooks/apple", appleHandler)
 go func() { log.Fatal(http.ListenAndServe(":8080", mux)) }()
 
 // Later, in your own handlers: does this user have access?
@@ -263,6 +267,72 @@ http.Handle("/apple", serverapi.NewConsumptionHandler(next, serverapi.Consumptio
 ```
 
 The wrapper answers CONSUMPTION_REQUEST itself and passes every other notification to the handler it wraps. The library never sets consent: the zero value means "no consent" and is never sent. If your responder or Apple fails inside the 12 hours, the endpoint answers 500 so Apple redelivers (production only; the first retry comes an hour later). Past the deadline it answers 200 and stops.
+
+## Store first, process later
+
+By default a handler verifies, parses and applies a notification inside the request. If your code, the database or the Play API fails at that moment, the store retries for a while and then gives up. The optional `inbox` package closes that gap: the handler saves the raw body and answers 200, and a worker processes it afterwards.
+
+<!-- example:Example_storeFirst -->
+```go
+ctx := context.Background()
+logger := slog.Default()
+svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
+verifier, err := apple.NewVerifier("com.example.app")
+if err != nil {
+	log.Fatal(err)
+}
+
+in := inboxmemory.New() // demo only: it is not durable. Bring your own durable Inbox (it must pass inboxtest.Run)
+queue := make(chan string, 1024)
+
+// The handler only saves the raw body and answers 200. A bug in parsing, an
+// outage of the entitlement store or a deploy can no longer lose a notification.
+handler, err := httpx.NewAppleHandler(nil, nil,
+	httpx.WithRoute(inbox.RouteProduction),
+	httpx.WithInbox(in, func(_ context.Context, id string) {
+		select {
+		case queue <- id:
+		default: // the sweeper below picks it up
+		}
+	}))
+if err != nil {
+	log.Fatal(err)
+}
+http.Handle("/webhooks/apple", handler)
+
+// A worker verifies, parses and applies each saved item. An error means a
+// retry can help (store outage); every other outcome is final and recorded.
+processors := inbox.Processors{Apple: apple.NewParser(verifier), Service: svc}
+go func() {
+	for id := range queue {
+		if _, err := inbox.ProcessStored(ctx, in, id, processors); err != nil {
+			logger.Error("will retry", "item", id, "error", err)
+		}
+	}
+}()
+
+// A sweeper retries what a crash or an outage left behind; the same call replays.
+for _, status := range []inbox.Status{inbox.StatusReceived, inbox.StatusFailed} {
+	items, err := in.List(ctx, inbox.Filter{Status: status, Limit: 100})
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, item := range items {
+		_, _ = inbox.ProcessStored(ctx, in, item.ID, processors)
+	}
+}
+
+// Housekeeping: drop processed items after a month.
+if _, err := in.Prune(ctx, time.Now().AddDate(0, -1, 0)); err != nil {
+	log.Fatal(err)
+}
+```
+
+- `httpx.WithInbox` makes a handler only check the method, the body size and (Google) the push token, save the delivery and answer 200. Credentials such as `Authorization` are never stored. A failed save answers 500 so the store redelivers. `WithRoute` is required and tags the delivery (`prod`, `sandbox`, `history`, `reconcile`).
+- `inbox.ProcessStored(ctx, in, id, processors)` is the one function for a worker and for replay. It verifies and parses the saved body, applies every event, acknowledges a pending Google purchase after its events are stored, and records one status: `processed`, `duplicate`, `stale`, `ignored`, `unsupported`, `invalid_signature` (all final) or `failed` (retryable). It returns an error only when a retry can help, so a job runner such as Temporal can retry on error. Running it again is safe: a final item is returned unchanged, and events a failed run already applied come back as duplicates.
+- The library ships only `inbox/memory`, which is for tests and demos: it loses everything on restart, so it defeats the purpose in production. Bring your own durable `Inbox` (a table in your database, a queue, a file store); it must pass `inboxtest.Run`, the conformance suite, which checks saving, idempotent IDs, header redaction, paging and pruning.
+- Do not set `Raw.ID` for Apple deliveries: the notification UUID is not verified yet when the handler saves it, so a forged body could claim an ID and the genuine notification would then be dropped as already saved. The Apple handler leaves it empty, and deduplication happens after verification in `Service`. A Google handler may use the Pub/Sub `messageId`, because the push token has been checked by then.
+- The inbox keeps raw bodies, which can hold account identifiers. `Prune` removes final items older than a cutoff and never touches items still to be retried.
 
 ## State mapping
 

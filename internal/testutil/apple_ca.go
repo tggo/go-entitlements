@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -68,9 +69,9 @@ func sign(tb testing.TB, tmpl, parent *x509.Certificate, pub *ecdsa.PublicKey, s
 	return c
 }
 
-var nextSerial int64 = 1000
+var nextSerial atomic.Int64
 
-func serial() *big.Int { nextSerial++; return big.NewInt(nextSerial) }
+func serial() *big.Int { return big.NewInt(1000 + nextSerial.Add(1)) }
 
 // NewAppleCA generates a fresh chain valid around time.Now().
 func NewAppleCA(tb testing.TB, opts ...AppleCAOptions) *AppleCA {

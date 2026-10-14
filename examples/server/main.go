@@ -84,7 +84,11 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(appleVerifier), svc, httpx.WithLogger(log)))
+	appleHandler, err := httpx.NewAppleHandler(apple.NewParser(appleVerifier), svc, httpx.WithLogger(log))
+	if err != nil {
+		return err
+	}
+	mux.Handle("/webhooks/apple", appleHandler)
 
 	if pkg := os.Getenv("GOOGLE_PACKAGE_NAME"); pkg != "" {
 		svcPlay, err := play.NewService(ctx) // honours GOOGLE_APPLICATION_CREDENTIALS

@@ -356,7 +356,8 @@ func newSiteRig(t *testing.T, fx *siteFixture, sc siteScenario, trusted, attacke
 	r.svc = entitlements.NewService(r.st, opts...)
 	v, err := apple.NewVerifier(sitePackage, apple.WithRootPool(trusted.Pool))
 	require.NoError(t, err)
-	inner := httpx.NewAppleHandler(recordingApple{r, apple.NewParser(v)}, recordingProc{r})
+	inner, err := httpx.NewAppleHandler(recordingApple{r, apple.NewParser(v)}, recordingProc{r})
+	require.NoError(t, err)
 	r.apple = serverapi.NewConsumptionHandler(inner, serverapi.ConsumptionHandlerConfig{
 		Verifier: v, Responder: siteResponder{r}, Sender: siteSender{r},
 		Clock: func() time.Time { return siteDate(t, fx.WallClock) },

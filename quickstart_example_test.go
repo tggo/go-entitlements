@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	play "google.golang.org/api/androidpublisher/v3"
@@ -17,6 +18,8 @@ import (
 	"github.com/tggo/go-entitlements/google/androidpublisher"
 	"github.com/tggo/go-entitlements/httpx"
 	"github.com/tggo/go-entitlements/httpx/pubsubauth"
+	"github.com/tggo/go-entitlements/inbox"
+	inboxmemory "github.com/tggo/go-entitlements/inbox/memory"
 	"github.com/tggo/go-entitlements/store/memory"
 	"github.com/tggo/go-entitlements/store/postgres"
 )
@@ -37,7 +40,11 @@ func Example_appleOnly() {
 		log.Fatal(err)
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(verifier), svc, httpx.WithLogger(logger)))
+	appleHandler, err := httpx.NewAppleHandler(apple.NewParser(verifier), svc, httpx.WithLogger(logger))
+	if err != nil {
+		log.Fatal(err)
+	}
+	mux.Handle("/webhooks/apple", appleHandler)
 	go func() { log.Fatal(http.ListenAndServe(":8080", mux)) }()
 
 	// Later, in your own handlers: does this user have access?
@@ -133,3 +140,58 @@ func Example_attributeUsers() {
 }
 
 func lookupUser(context.Context, entitlements.Source, string) (string, error) { return "", nil }
+
+func Example_storeFirst() {
+	ctx := context.Background()
+	logger := slog.Default()
+	svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
+	verifier, err := apple.NewVerifier("com.example.app")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	in := inboxmemory.New() // demo only: it is not durable. Bring your own durable Inbox (it must pass inboxtest.Run)
+	queue := make(chan string, 1024)
+
+	// The handler only saves the raw body and answers 200. A bug in parsing, an
+	// outage of the entitlement store or a deploy can no longer lose a notification.
+	handler, err := httpx.NewAppleHandler(nil, nil,
+		httpx.WithRoute(inbox.RouteProduction),
+		httpx.WithInbox(in, func(_ context.Context, id string) {
+			select {
+			case queue <- id:
+			default: // the sweeper below picks it up
+			}
+		}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	http.Handle("/webhooks/apple", handler)
+
+	// A worker verifies, parses and applies each saved item. An error means a
+	// retry can help (store outage); every other outcome is final and recorded.
+	processors := inbox.Processors{Apple: apple.NewParser(verifier), Service: svc}
+	go func() {
+		for id := range queue {
+			if _, err := inbox.ProcessStored(ctx, in, id, processors); err != nil {
+				logger.Error("will retry", "item", id, "error", err)
+			}
+		}
+	}()
+
+	// A sweeper retries what a crash or an outage left behind; the same call replays.
+	for _, status := range []inbox.Status{inbox.StatusReceived, inbox.StatusFailed} {
+		items, err := in.List(ctx, inbox.Filter{Status: status, Limit: 100})
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, item := range items {
+			_, _ = inbox.ProcessStored(ctx, in, item.ID, processors)
+		}
+	}
+
+	// Housekeeping: drop processed items after a month.
+	if _, err := in.Prune(ctx, time.Now().AddDate(0, -1, 0)); err != nil {
+		log.Fatal(err)
+	}
+}

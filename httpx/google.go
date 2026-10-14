@@ -2,9 +2,12 @@ package httpx
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
+	"unicode"
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
@@ -49,10 +52,13 @@ type googleHandler struct {
 // with an error log that says so. Any other fetch failure (5xx, 429,
 // timeouts) answers 500 so Pub/Sub redelivers.
 func NewGoogleHandler(parser GoogleParser, svc Processor, opts ...Option) (http.Handler, error) {
-	if parser == nil || svc == nil {
+	if cfg0 := newConfig(opts); cfg0.inbox == nil && (parser == nil || svc == nil) {
 		return nil, ErrDependencyRequired
 	}
 	cfg := newConfig(opts)
+	if err := cfg.checkInboxRoute(); err != nil {
+		return nil, err
+	}
 	log := cfg.log.With("handler", "google")
 	if cfg.auth == nil {
 		if !cfg.insecure {
@@ -74,6 +80,10 @@ func (h *googleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	body, ok := readBody(w, r, h.cfg.maxBody, h.log)
 	if !ok {
+		return
+	}
+	if h.cfg.inbox != nil {
+		saveToInbox(w, r, h.cfg, entitlements.SourceGoogle, h.pubsubID(body), body, h.log)
 		return
 	}
 	res, err := h.parser.ParseResult(r.Context(), body)
@@ -161,4 +171,29 @@ func (h *googleHandler) processAll(r *http.Request, res google.Result) int {
 		status = h.acknowledge(r.Context(), res.Events[0], res.Ack)
 	}
 	return status
+}
+
+// pubsubID returns the Pub/Sub messageId as the inbox idempotency key, but only
+// when push authentication passed for this request: then the envelope came from
+// Pub/Sub and its id is unique per delivery. Without an authenticator (the
+// WithInsecureNoAuth opt-out) anyone could send a body naming an id, so none is
+// used. A body that is not an envelope, or an id that is not a plain string,
+// yields no id.
+func (h *googleHandler) pubsubID(body []byte) string {
+	if h.cfg.auth == nil {
+		return ""
+	}
+	var env struct {
+		Message struct {
+			MessageID string `json:"messageId"`
+		} `json:"message"`
+	}
+	if json.Unmarshal(body, &env) != nil {
+		return ""
+	}
+	id := env.Message.MessageID
+	if len(id) > 256 || strings.ContainsFunc(id, unicode.IsControl) {
+		return ""
+	}
+	return id
 }

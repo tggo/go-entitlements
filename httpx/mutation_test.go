@@ -101,7 +101,7 @@ func TestAppleHandler_ParseErrorStatusTable(t *testing.T) {
 			t.Parallel()
 			parser := mocks.NewMockAppleParser(t)
 			parser.EXPECT().Parse([]byte("body")).Return(entitlements.Event{}, tc.err)
-			h := httpx.NewAppleHandler(parser, mocks.NewMockProcessor(t), httpx.WithLogger(testLogger(t)))
+			h := mustApple(t, parser, mocks.NewMockProcessor(t), httpx.WithLogger(testLogger(t)))
 			assert.Equal(t, tc.code, post(h, "body").Code)
 		})
 	}
@@ -147,7 +147,7 @@ func TestDefaultMaxBodyBoundary(t *testing.T) {
 		t.Parallel()
 		parser := mocks.NewMockAppleParser(t)
 		parser.EXPECT().Parse([]byte(atLimit)).Return(entitlements.Event{}, entitlements.ErrIgnored).Once()
-		h := httpx.NewAppleHandler(parser, mocks.NewMockProcessor(t), httpx.WithLogger(testLogger(t)))
+		h := mustApple(t, parser, mocks.NewMockProcessor(t), httpx.WithLogger(testLogger(t)))
 		assert.Equal(t, http.StatusOK, post(h, atLimit).Code)
 		assert.Equal(t, http.StatusRequestEntityTooLarge, post(h, overLimit).Code)
 	})

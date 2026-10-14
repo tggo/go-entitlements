@@ -16,6 +16,12 @@ packages:
       AppleParser:
       GoogleParser:
       Processor:
+  github.com/tggo/go-entitlements/inbox:
+    interfaces:
+      Inbox:
+      AppleParser:
+      GoogleParser:
+      Processor:
 resolve-type-alias: false
 disable-version-string: true
 issue-845-fix: true

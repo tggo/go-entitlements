@@ -21,6 +21,7 @@ fuzz:
 	go test -run '^$$' -fuzz '^FuzzApply$$' -fuzztime $(FUZZTIME) .
 	go test -run '^$$' -fuzz '^FuzzAppleParse$$' -fuzztime $(FUZZTIME) ./apple
 	go test -run '^$$' -fuzz '^FuzzGoogleParse$$' -fuzztime $(FUZZTIME) ./google
+	go test -run '^$$' -fuzz '^FuzzProcessStored$$' -fuzztime $(FUZZTIME) ./inbox
 
 # Mutation testing of the unit-testable packages with gremlins (pinned). It
 # mutates the code, reruns the unit tests per mutant and reports survivors.
