@@ -11,3 +11,7 @@ import (
 func TestConformance(t *testing.T) {
 	storetest.Run(t, func(*testing.T) entitlements.Store { return memory.New() })
 }
+
+func TestStress(t *testing.T) {
+	storetest.RunStress(t, func(*testing.T) entitlements.Store { return memory.New() }, storetest.StressLight)
+}

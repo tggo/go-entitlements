@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -259,4 +260,133 @@ func (s *StoreSuite) TestConformance() {
 		s.Require().NoError(err)
 		return s.store
 	})
+}
+
+func (s *StoreSuite) processedCount(db *pgxpool.Pool) func(context.Context) (int, error) {
+	return func(ctx context.Context) (int, error) {
+		var n int
+		err := db.QueryRow(ctx, `SELECT count(*) FROM processed_events`).Scan(&n)
+		return n, err
+	}
+}
+
+func (s *StoreSuite) TestStress() {
+	storetest.RunStress(s.T(), func(t *testing.T) entitlements.Store {
+		t.Helper()
+		_, err := s.db.Exec(context.Background(), `TRUNCATE entitlements, processed_events`)
+		s.Require().NoError(err)
+		return s.store
+	}, storetest.StressConfig{
+		Goroutines: 32, Chains: 6, EventsPerChain: 9, DupRate: 3, CrossSupersede: true, Rounds: 10,
+		ProcessedCount: s.processedCount(s.db),
+	})
+}
+
+// Two connections for 64 goroutines: the advisory lock must queue, not deadlock.
+func (s *StoreSuite) TestStressTinyPool() {
+	ctx := context.Background()
+	cfg, err := pgxpool.ParseConfig(s.dsn)
+	s.Require().NoError(err)
+	cfg.MaxConns = 2
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	s.Require().NoError(err)
+	defer pool.Close()
+	storetest.RunStress(s.T(), func(t *testing.T) entitlements.Store {
+		t.Helper()
+		_, err := pool.Exec(ctx, `TRUNCATE entitlements, processed_events`)
+		s.Require().NoError(err)
+		return postgres.New(pool)
+	}, storetest.StressConfig{
+		Goroutines: 64, Chains: 6, EventsPerChain: 9, DupRate: 2, CrossSupersede: true, Rounds: 3,
+		ProcessedCount: s.processedCount(pool),
+	})
+}
+
+func (s *StoreSuite) TestStressUnderSerializableDefault() {
+	ctx := context.Background()
+	cfg, err := pgxpool.ParseConfig(s.dsn)
+	s.Require().NoError(err)
+	cfg.ConnConfig.RuntimeParams["default_transaction_isolation"] = "serializable"
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	s.Require().NoError(err)
+	defer pool.Close()
+	storetest.RunStress(s.T(), func(t *testing.T) entitlements.Store {
+		t.Helper()
+		_, err := pool.Exec(ctx, `TRUNCATE entitlements, processed_events`)
+		s.Require().NoError(err)
+		return postgres.New(pool)
+	}, storetest.StressConfig{
+		Goroutines: 64, Chains: 6, EventsPerChain: 9, DupRate: 3, CrossSupersede: true, Rounds: 3,
+		ProcessedCount: s.processedCount(pool),
+	})
+}
+
+func (s *StoreSuite) TestMigrateConcurrentInstances() {
+	ctx := context.Background()
+	_, err := s.db.Exec(ctx, `CREATE DATABASE migrate_race`)
+	s.Require().NoError(err)
+	dsn := strings.Replace(s.dsn, "/entitlements?", "/migrate_race?", 1)
+	var wg sync.WaitGroup
+	errs := make(chan error, 16)
+	for range 16 {
+		wg.Add(1)
+		go func() { // each "instance" has its own pool
+			defer wg.Done()
+			p, err := pgxpool.New(ctx, dsn)
+			if err != nil {
+				errs <- err
+				return
+			}
+			defer p.Close()
+			errs <- postgres.New(p).Migrate(ctx)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		s.NoError(err)
+	}
+}
+
+func (s *StoreSuite) TestPanicInFnReleasesConnectionAndLock() {
+	ctx := context.Background()
+	e := s.ev("panic-1", entitlements.StateActive, s.now)
+	func() {
+		defer func() { _ = recover() }()
+		_, _ = s.store.Apply(ctx, e, func(*entitlements.Entitlement) (*entitlements.Entitlement, error) { panic("boom") })
+	}()
+	s.Eventually(func() bool { return s.db.Stat().AcquiredConns() == 0 }, 2*time.Second, 20*time.Millisecond, "connection leaked after panic")
+	_, err := s.process(s.ev("panic-2", entitlements.StateActive, s.now.Add(time.Second)))
+	s.Require().NoError(err)
+	s.Equal(int64(1), s.get("tx1").Version, "chain lock was released and the panicking event left no trace")
+}
+
+// A caller waiting on a chain lock must give up when its context ends.
+func (s *StoreSuite) TestLockWaitHonoursContext() {
+	hold, release := make(chan struct{}), make(chan struct{})
+	e1 := s.ev("hold-1", entitlements.StateActive, s.now)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = s.store.Apply(context.Background(), e1, func(cur *entitlements.Entitlement) (*entitlements.Entitlement, error) {
+			close(hold)
+			<-release
+			return entitlements.Apply(cur, e1)
+		})
+	}()
+	<-hold
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	begin := time.Now()
+	e2 := s.ev("hold-2", entitlements.StateActive, s.now.Add(time.Second))
+	_, err := s.store.Apply(ctx, e2, func(cur *entitlements.Entitlement) (*entitlements.Entitlement, error) {
+		return entitlements.Apply(cur, e2)
+	})
+	s.Error(err)
+	s.Less(time.Since(begin), 3*time.Second)
+	close(release)
+	<-done
+	s.Eventually(func() bool { return s.db.Stat().AcquiredConns() == 0 }, 2*time.Second, 20*time.Millisecond)
+	_, err = s.process(s.ev("hold-3", entitlements.StateActive, s.now.Add(2*time.Second)))
+	s.NoError(err, "the timed-out event stays retryable")
 }

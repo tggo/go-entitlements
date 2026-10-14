@@ -10,21 +10,13 @@ Date: 2026-10-14. Verified with the race detector (Go 1.27.2) and Postgres 17.
 
 ## Probes
 
-Probe tests are in `docs/review/probes/`, behind the build tag `probe`, so normal runs skip them. Several of them fail on purpose, because they demonstrate the findings below.
+The probe tests that were in `docs/review/probes/` are superseded and deleted. Their content now lives in the repository as regular tests:
 
-```
-go test -race -tags=probe ./docs/review/probes/
-go test -race -tags='probe integration' -p=1 ./docs/review/probes/   # needs Docker
-```
+- the stress workload (shuffled, duplicated events, crossing supersedes, invariants) is `storetest.RunStress`, run for the memory store (`store/memory/store_test.go`) and Postgres (`TestStress`, `TestStressTinyPool`, `TestStressUnderSerializableDefault` in `store/postgres/store_integration_test.go`); `make stress` runs it at heavy intensity;
+- concurrent `Migrate` from 16 pools, panic in `fn` releasing the connection and lock, and a lock wait that honours the context are Postgres integration tests;
+- the findings below each have a regression test (see the round-1 fixes): unseen-chain tombstone, new-chain-first supersede with retry, Read Committed under a Serializable default, per-source dedupe, pool clone.
 
-The stress workload has 6 chains and 9 events per chain, each delivered 4 times and shuffled, over 64 goroutines. Every third event supersedes the next chain, which makes the supersedes cross. The invariants checked are:
-
-- one row per chain;
-- `version` equals the number of applied events;
-- the final state is the newest applied event;
-- `fn` runs at most once per event ID;
-- the number of `processed_events` rows equals the number of distinct IDs;
-- no deadlock within 90 s.
+The original invariants were: one row per chain; `version` equals the number of applied events; the final state is the newest applied event; every distinct event ID is recorded once; no deadlock within the timeout.
 
 ## Findings
 

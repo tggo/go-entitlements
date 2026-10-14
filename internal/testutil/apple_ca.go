@@ -135,16 +135,25 @@ func (ca *AppleCA) SignWithKey(tb testing.TB, key *ecdsa.PrivateKey, claims any)
 // certificates as the x5c header.
 func SignChain(tb testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) string {
 	tb.Helper()
+	cb, err := json.Marshal(claims)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return signRaw(tb, key, x5c, cb)
+}
+
+func signRaw(tb testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, payload []byte) string {
+	tb.Helper()
 	certs := make([]string, len(x5c))
 	for i, der := range x5c {
 		certs[i] = base64.StdEncoding.EncodeToString(der)
 	}
-	hdr := map[string]any{"alg": "ES256", "x5c": certs}
+	return signRawHeader(tb, key, map[string]any{"alg": "ES256", "x5c": certs}, payload)
+}
+
+func signRawHeader(tb testing.TB, key *ecdsa.PrivateKey, hdr map[string]any, cb []byte) string {
+	tb.Helper()
 	hb, err := json.Marshal(hdr)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	cb, err := json.Marshal(claims)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -164,4 +173,11 @@ func SignChain(tb testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) s
 func NewAppleKey(tb testing.TB) *ecdsa.PrivateKey {
 	tb.Helper()
 	return newKey(tb)
+}
+
+// SignRaw is like Sign but takes the payload bytes verbatim, valid JSON or
+// not. For fuzzing and malformed-payload tests.
+func (ca *AppleCA) SignRaw(tb testing.TB, payload []byte) string {
+	tb.Helper()
+	return signRaw(tb, ca.LeafKey, [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw, ca.Root.Raw}, payload)
 }

@@ -57,7 +57,7 @@ the answer — a guessed criterion is worse than none.
 - under concurrent delivery the stored state equals the newest event and `Version` equals the number of applied events
 - every `Store` implementation passes `storetest.Run`; memory and Postgres do
 - Postgres `Apply` runs at Read Committed and retries SQLSTATE 40001/40P01
-**Verified:** `make test-unit` and `make test-integration` with `-race` on Postgres 17, 2026-10-14.
+**Verified:** `make test-unit` and `make test-integration` with `-race` on Postgres 17; `make stress` heavy (9,600 deliveries, 64 goroutines, crossing supersedes): memory ~40k+/s, Postgres 1,996/s (20 conns), 523/s (2 conns), 1,609/s (Serializable default), no deadlocks; fuzz 30s per target, no crashers, 2026-10-14.
 
 ## HTTP — response policy
 **What:** `httpx` handlers answer so stores retry only when a retry can help.
