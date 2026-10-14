@@ -205,3 +205,11 @@ h1 { max-width: 20ch; }
   .access-row input[type=range] { width: 130px; }
 }
 pre, pre code { font-variant-ligatures: none; }
+
+.accesses { display: flex; gap: 8px; flex-wrap: wrap; }
+.access { font: 650 15px var(--body); padding: 4px 12px; }
+.env-act { border-style: solid; border-color: var(--accent); }
+.env-act::before { background: var(--dup-bg); }
+#tray { align-content: start; }
+
+#tray { max-height: 620px; overflow-y: auto; }

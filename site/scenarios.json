@@ -1,5 +1,227 @@
 {
- "_comment": "Single source for the simulator cards and scenarios. The \"expect\" blocks are written by the Go test (go test -run TestSiteScenarios -update-site .) and checked by it and by site/check-scenarios.js.",
+ "_comment": "Single source for the simulator. cards: store messages; actions: calls your code makes; scenarios: ordered steps (send a card, do an action, toggle database/Play API/acknowledger, register a token Google already knows). Each step that has an outcome carries an expect block written by the Go test (go test -run TestSiteScenarios -update-site .) and checked by it and by site/check-scenarios.js.",
+ "actions": [
+  {
+   "id": "link-ok",
+   "kind": "link",
+   "source": "apple",
+   "sub": "LinkUser(apple, orig-3001, u-7e3f)",
+   "title": "Link a purchase to a user",
+   "tx": "orig-3001",
+   "user": "u-7e3f"
+  },
+  {
+   "id": "link-other",
+   "kind": "link",
+   "source": "apple",
+   "sub": "LinkUser(apple, orig-3001, u-other)",
+   "title": "Link it to a different user",
+   "tx": "orig-3001",
+   "user": "u-other"
+  },
+  {
+   "id": "link-unknown",
+   "kind": "link",
+   "source": "apple",
+   "sub": "LinkUser(apple, orig-9999, u-7e3f)",
+   "title": "Link a purchase nothing has reported",
+   "tx": "orig-9999",
+   "user": "u-7e3f"
+  },
+  {
+   "id": "link-main",
+   "kind": "link",
+   "source": "apple",
+   "sub": "LinkUser(apple, orig-1001, u-other)",
+   "title": "Link the main chain to another user",
+   "tx": "orig-1001",
+   "user": "u-other"
+  },
+  {
+   "id": "forget",
+   "kind": "forget",
+   "sub": "ForgetUser(u-7e3f)",
+   "title": "Erase user u-7e3f",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-25",
+   "id": "rc-active",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-03-25",
+   "status": 1,
+   "sub": "status 1, signed Mar 25",
+   "title": "Reconcile: Apple says active until Apr 25",
+   "tx": "orig-1001",
+   "txn": "t-apr25",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-01",
+   "id": "rc-expired",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-04-08",
+   "status": 2,
+   "sub": "status 2, signed Apr 8",
+   "title": "Reconcile: Apple says expired",
+   "tx": "orig-1001",
+   "txn": "t-mar",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-03-01",
+   "id": "rc-old",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-02-10",
+   "status": 1,
+   "sub": "status 1, signed Feb 10",
+   "title": "Reconcile: an older snapshot",
+   "tx": "orig-1001",
+   "txn": "t-feb",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-01",
+   "id": "rc-refunded",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-03-26",
+   "status": 5,
+   "sub": "status 5, signed Mar 26",
+   "title": "Reconcile: Apple says refunded",
+   "tx": "orig-1001",
+   "txn": "t-mar",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-01",
+   "family": true,
+   "hidden": true,
+   "id": "rc-family",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-03-26",
+   "status": 5,
+   "sub": "status 5, family shared",
+   "title": "Reconcile: family sharing removed",
+   "tx": "orig-1001",
+   "txn": "t-mar",
+   "user": "u-7e3f"
+  },
+  {
+   "hidden": true,
+   "id": "rc-nodate",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-03-25",
+   "status": 1,
+   "sub": "status 1, no expiresDate",
+   "title": "Reconcile: active without an expiry",
+   "tx": "orig-1001",
+   "txn": "t-x",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-01",
+   "graceEnd": "2026-04-08",
+   "hidden": true,
+   "id": "rc-grace",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-04-02",
+   "status": 4,
+   "sub": "status 4",
+   "title": "Reconcile: grace period",
+   "tx": "orig-1001",
+   "txn": "t-apr",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-01",
+   "hidden": true,
+   "id": "rc-retry",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-04-12",
+   "status": 3,
+   "sub": "status 3",
+   "title": "Reconcile: billing retry",
+   "tx": "orig-1001",
+   "txn": "t-apr",
+   "user": "u-7e3f"
+  },
+  {
+   "hidden": true,
+   "id": "rc-unknown",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-04-12",
+   "status": 9,
+   "sub": "status 9",
+   "title": "Reconcile: unknown status",
+   "tx": "orig-1001",
+   "txn": "t-apr",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-25",
+   "hidden": true,
+   "id": "rc-new",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-03-25",
+   "status": 1,
+   "sub": "status 1 on a new chain",
+   "title": "Reconcile a chain the server never saw",
+   "tx": "orig-4001",
+   "txn": "t-4001",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-25",
+   "hidden": true,
+   "id": "rc-yearly",
+   "kind": "reconcile",
+   "product": "pro.yearly",
+   "signed": "2026-03-25",
+   "status": 1,
+   "sub": "golden-test only",
+   "title": "rc-yearly",
+   "tx": "orig-1001",
+   "txn": "t-apr25",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-05",
+   "hidden": true,
+   "id": "rc-sandbox",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "signed": "2026-03-25",
+   "status": 1,
+   "sub": "golden-test only",
+   "title": "rc-sandbox",
+   "tx": "orig-1001",
+   "txn": "t-sbx",
+   "user": "u-7e3f"
+  },
+  {
+   "expires": "2026-04-25",
+   "hidden": true,
+   "id": "rc-nosigned",
+   "kind": "reconcile",
+   "product": "pro.monthly",
+   "status": 1,
+   "sub": "golden-test only",
+   "title": "rc-nosigned",
+   "tx": "orig-1001",
+   "txn": "t-apr25",
+   "user": "u-7e3f"
+  }
+ ],
  "cards": [
   {
    "apple": {
@@ -122,6 +344,7 @@
     "product": "pro.monthly",
     "signed": "2026-03-12",
     "status": 1,
+    "subtype": "AUTO_RENEW_DISABLED",
     "tx": "orig-1001",
     "txn": "t-mar",
     "type": "DID_CHANGE_RENEWAL_STATUS",
@@ -751,11 +974,570 @@
    "src": "apple",
    "sub": "golden-test only",
    "title": "renewal of the refunded transaction, signed after the refund"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-1001",
+    "txn": "t-mar20",
+    "type": "DID_RENEW",
+    "userId": "u-other",
+    "uuid": "n-29"
+   },
+   "id": "a29",
+   "src": "apple",
+   "sub": "signed Mar 20, appAccountToken of someone else",
+   "title": "DID_RENEW naming another account"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-3001",
+    "txn": "t-3001",
+    "type": "DID_RENEW",
+    "uuid": "n-30"
+   },
+   "id": "a30",
+   "src": "apple",
+   "sub": "signed Mar 20, new subscription chain",
+   "title": "DID_RENEW without an account token"
+  },
+  {
+   "apple": {
+    "consumption": "yes",
+    "expires": "2026-07-01",
+    "product": "pro.monthly",
+    "signed": "2026-06-01",
+    "tx": "orig-3101",
+    "txType": "Auto-Renewable Subscription",
+    "txn": "t-3101",
+    "type": "CONSUMPTION_REQUEST",
+    "userId": "u-7e3f",
+    "uuid": "n-31"
+   },
+   "id": "c1",
+   "src": "apple",
+   "sub": "Apple asks how much was used before deciding a refund",
+   "title": "CONSUMPTION_REQUEST, customer agreed"
+  },
+  {
+   "apple": {
+    "consumption": "no",
+    "expires": "2026-07-01",
+    "product": "pro.monthly",
+    "signed": "2026-06-01",
+    "tx": "orig-3102",
+    "txType": "Auto-Renewable Subscription",
+    "txn": "t-3102",
+    "type": "CONSUMPTION_REQUEST",
+    "userId": "u-7e3f",
+    "uuid": "n-32"
+   },
+   "id": "c2",
+   "src": "apple",
+   "sub": "the customer did not agree to share usage",
+   "title": "CONSUMPTION_REQUEST, no consent"
+  },
+  {
+   "apple": {
+    "consumption": "error",
+    "expires": "2026-07-01",
+    "product": "pro.monthly",
+    "signed": "2026-06-01",
+    "tx": "orig-3103",
+    "txType": "Auto-Renewable Subscription",
+    "txn": "t-3103",
+    "type": "CONSUMPTION_REQUEST",
+    "userId": "u-7e3f",
+    "uuid": "n-33"
+   },
+   "id": "c3",
+   "src": "apple",
+   "sub": "your database errors while answering",
+   "title": "CONSUMPTION_REQUEST, your lookup fails"
+  },
+  {
+   "apple": {
+    "consumption": "error",
+    "expires": "2026-07-01",
+    "product": "pro.monthly",
+    "signed": "2026-05-30",
+    "tx": "orig-3104",
+    "txType": "Auto-Renewable Subscription",
+    "txn": "t-3104",
+    "type": "CONSUMPTION_REQUEST",
+    "userId": "u-7e3f",
+    "uuid": "n-34"
+   },
+   "hidden": true,
+   "id": "c4",
+   "src": "apple",
+   "sub": "lookup fails, but the deadline has passed",
+   "title": "CONSUMPTION_REQUEST after the 12 hours"
+  },
+  {
+   "apple": {
+    "autoRenew": 1,
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-3201",
+    "txn": "t-3201",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-35"
+   },
+   "hidden": true,
+   "id": "a31",
+   "src": "apple",
+   "sub": "renewalInfo autoRenewStatus 1",
+   "title": "renewal with auto-renew on"
+  },
+  {
+   "apple": {
+    "autoRenew": 0,
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-21",
+    "status": 1,
+    "subtype": "AUTO_RENEW_ENABLED",
+    "tx": "orig-3201",
+    "txn": "t-3201",
+    "type": "DID_CHANGE_RENEWAL_STATUS",
+    "userId": "u-7e3f",
+    "uuid": "n-36"
+   },
+   "hidden": true,
+   "id": "a32",
+   "src": "apple",
+   "sub": "subtype says enabled, renewal info says 0",
+   "title": "status change, renewalInfo says off"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-22",
+    "status": 1,
+    "subtype": "AUTO_RENEW_ENABLED",
+    "tx": "orig-3201",
+    "txn": "t-3201",
+    "type": "DID_CHANGE_RENEWAL_STATUS",
+    "userId": "u-7e3f",
+    "uuid": "n-37"
+   },
+   "hidden": true,
+   "id": "a33",
+   "src": "apple",
+   "sub": "AUTO_RENEW_ENABLED, no renewal info",
+   "title": "status change, subtype only"
+  },
+  {
+   "google": {
+    "ack": "pending",
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-41",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokK",
+    "userId": "u-7e3f"
+   },
+   "id": "gk",
+   "src": "google",
+   "sub": "Play says ACTIVE, acknowledgement pending",
+   "title": "Purchased (token K), not acknowledged yet"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-10",
+    "items": [
+     {
+      "expiry": "2026-07-01",
+      "product": "pro.monthly"
+     },
+     {
+      "expiry": "2026-07-01",
+      "product": "addon.storage"
+     }
+    ],
+    "kind": "sub",
+    "messageId": "m-42",
+    "subState": "ACTIVE",
+    "token": "tokM",
+    "userId": "u-7e3f"
+   },
+   "id": "gA1",
+   "src": "google",
+   "sub": "token M has a base plan and a storage add-on",
+   "title": "Add-ons: one purchase, two products"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-10",
+    "expiry": "2026-04-10",
+    "kind": "sub",
+    "linked": "tokB",
+    "messageId": "m-43",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokC",
+    "userId": "u-7e3f"
+   },
+   "id": "gU",
+   "src": "google",
+   "sub": "token C is linked to token B, which is linked to token A",
+   "title": "Second upgrade (token C)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-12",
+    "items": [
+     {
+      "expiry": "2026-07-01",
+      "product": "pro.monthly"
+     },
+     {
+      "expiry": "2026-05-01",
+      "product": "addon.storage"
+     }
+    ],
+    "kind": "sub",
+    "messageId": "m-44",
+    "subState": "ACTIVE",
+    "token": "tokM",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gA2",
+   "src": "google",
+   "sub": "one item has already lapsed",
+   "title": "Add-on removed, base plan left"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-14",
+    "items": [
+     {
+      "expiry": "2026-07-01",
+      "order": "order-1",
+      "product": "pro.monthly"
+     },
+     {
+      "expiry": "2026-07-01",
+      "order": "order-1",
+      "product": "addon.storage"
+     }
+    ],
+    "kind": "voided",
+    "messageId": "m-45",
+    "orderMatches": true,
+    "subState": "ACTIVE",
+    "token": "tokM",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gA3",
+   "src": "google",
+   "sub": "voided order of token M",
+   "title": "Add-on purchase refunded"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-11",
+    "items": [
+     {
+      "expiry": "2026-07-01",
+      "product": "pro.monthly"
+     },
+     {
+      "expiry": "2026-07-01",
+      "product": "addon.storage"
+     }
+    ],
+    "kind": "sub",
+    "messageId": "m-46",
+    "subState": "IN_GRACE_PERIOD",
+    "token": "tokN",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gA4",
+   "src": "google",
+   "sub": "IN_GRACE_PERIOD on a two-item purchase",
+   "title": "Add-on in grace"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-11",
+    "items": [
+     {
+      "product": "pro.monthly"
+     },
+     {
+      "product": "addon.storage"
+     }
+    ],
+    "kind": "sub",
+    "messageId": "m-47",
+    "subState": "ACTIVE",
+    "token": "tokP",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gA5",
+   "src": "google",
+   "sub": "active but no item has expiryTime",
+   "title": "Add-ons, none with an expiry"
+  },
+  {
+   "google": {
+    "autoRenew": true,
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-48",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokQ",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gT1",
+   "src": "google",
+   "sub": "autoRenewingPlan.autoRenewEnabled true",
+   "title": "Auto-renew on (Play plan)"
+  },
+  {
+   "google": {
+    "autoRenew": false,
+    "eventTime": "2026-03-21",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-50",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokQ",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gT2",
+   "src": "google",
+   "sub": "autoRenewingPlan.autoRenewEnabled false",
+   "title": "Auto-renew off (Play plan)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "linked": "tokZZZ",
+    "messageId": "m-51",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokR",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gT3",
+   "src": "google",
+   "sub": "upgrade over a token Google does not know",
+   "title": "Not-found linked token"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-11",
+    "items": [
+     {
+      "expiry": "2026-07-01",
+      "product": "pro.monthly"
+     },
+     {
+      "expiry": "2026-08-01",
+      "product": "pro.monthly"
+     }
+    ],
+    "kind": "sub",
+    "messageId": "m-52",
+    "subState": "ACTIVE",
+    "token": "tokS",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gT4",
+   "src": "google",
+   "sub": "two items with the same product id",
+   "title": "Same product twice in one purchase"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "voided",
+    "messageId": "m-60",
+    "orderMatches": false,
+    "product": "pro.monthly",
+    "subState": "EXPIRED",
+    "token": "tokV",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gV1",
+   "src": "google",
+   "sub": "voided order does not match",
+   "title": "Voided, subscription already expired"
+  },
+  {
+   "google": {
+    "ack": "pending",
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-61",
+    "product": "pro.monthly",
+    "subState": "EXPIRED",
+    "token": "tokY",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gk2",
+   "src": "google",
+   "sub": "nothing to acknowledge",
+   "title": "Expired purchase, acknowledgement pending"
+  },
+  {
+   "google": {
+    "ack": "pending",
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-62",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "testPurchase": true,
+    "token": "tokX",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gk3",
+   "src": "google",
+   "sub": "test purchases are acknowledged too",
+   "title": "License-tester purchase, acknowledgement pending"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "items": [
+     {
+      "expiry": "2026-07-01"
+     }
+    ],
+    "kind": "sub",
+    "messageId": "m-63",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokW",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gP",
+   "src": "google",
+   "sub": "the notification supplies the subscription id",
+   "title": "Single item without a product id"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "items": [
+     {
+      "order": "none",
+      "product": "pro.monthly"
+     }
+    ],
+    "kind": "voided",
+    "messageId": "m-70",
+    "product": "pro.monthly",
+    "subState": "EXPIRED",
+    "token": "tokV2",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gV2",
+   "src": "google",
+   "sub": "no order id on any item",
+   "title": "Voided, Play reports no order ids, expired"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "items": [
+     {
+      "expiry": "2026-04-20",
+      "order": "none",
+      "product": "pro.monthly"
+     }
+    ],
+    "kind": "voided",
+    "messageId": "m-71",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokV3",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gV3",
+   "src": "google",
+   "sub": "no order id on any item",
+   "title": "Voided, Play reports no order ids, still active"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "kind": "sub",
+    "messageId": "m-72",
+    "noItems": true,
+    "product": "pro.monthly",
+    "subState": "EXPIRED",
+    "token": "tokN2",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gN",
+   "src": "google",
+   "sub": "nothing but the subscription id",
+   "title": "Expired purchase with no line items"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-15",
+    "expiry": "2026-04-30",
+    "kind": "sub",
+    "linked": "tokM",
+    "messageId": "m-73",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokU",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "gU2",
+   "src": "google",
+   "sub": "token U replaces token M",
+   "title": "Upgrade from an add-on purchase"
   }
  ],
  "checkDates": [
   "2026-03-15",
   "2026-04-05"
+ ],
+ "checkProducts": [
+  "pro.monthly",
+  "addon.storage"
  ],
  "product": "pro.monthly",
  "scenarios": [
@@ -767,10 +1549,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -779,7 +1565,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -788,10 +1576,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -800,7 +1592,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a2"
@@ -809,10 +1603,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -821,7 +1619,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -836,10 +1636,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -848,7 +1652,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -857,10 +1663,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -869,7 +1679,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a2"
@@ -878,10 +1690,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -890,7 +1706,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "DUPLICATE"
      },
      "send": "a2"
@@ -905,10 +1723,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -917,7 +1739,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -926,10 +1750,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -938,7 +1766,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -947,10 +1777,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -959,7 +1793,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a2"
@@ -974,10 +1810,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -986,7 +1826,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -995,10 +1837,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -1007,7 +1853,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -1016,10 +1864,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -1030,7 +1882,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a6"
@@ -1039,10 +1893,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -1053,7 +1911,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a8"
@@ -1062,10 +1922,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -1074,7 +1938,9 @@
         "version": 4
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a9"
@@ -1089,10 +1955,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1101,7 +1971,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -1110,10 +1982,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -1122,7 +1998,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -1131,10 +2009,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -1143,7 +2025,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 401,
+      "detail": "",
       "stamp": "FORGED"
      },
      "send": "a12"
@@ -1158,10 +2042,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1170,7 +2058,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -1179,10 +2069,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -1191,7 +2085,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -1200,10 +2096,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-feb"
@@ -1214,7 +2114,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a7"
@@ -1229,10 +2131,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1241,7 +2147,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -1250,10 +2158,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -1262,7 +2174,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a2"
@@ -1271,10 +2185,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [
          "t-feb"
@@ -1285,7 +2203,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a7"
@@ -1294,10 +2214,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-feb"
@@ -1308,7 +2232,9 @@
         "version": 4
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -1323,10 +2249,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1335,7 +2265,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -1344,10 +2276,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "expired",
@@ -1356,6 +2292,7 @@
         "version": 2
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -1364,7 +2301,9 @@
         "version": 1
        }
       },
+      "changes": 2,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g3"
@@ -1373,10 +2312,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "expired",
@@ -1385,6 +2328,7 @@
         "version": 2
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -1393,7 +2337,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "g4"
@@ -1411,10 +2357,15 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {},
+      "changes": 0,
       "code": 500,
+      "detail": "",
       "stamp": "RETRY"
      },
      "send": "a1"
@@ -1426,10 +2377,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1438,10 +2393,763 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
+    }
+   ]
+  },
+  {
+   "name": "A renewal naming another account",
+   "note": "A chain keeps its first owner. A later message that names a different user still moves the state forward, but the owner does not change.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a29"
+    }
+   ]
+  },
+  {
+   "name": "Link a purchase to a user",
+   "note": "The renewal has no account token, so it is stored without a user and nobody has access. Linking attaches the user. A second link is a no-op, and a different user is refused.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a30"
+    },
+    {
+     "do": "link-ok",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "",
+      "stamp": "LINKED"
+     }
+    },
+    {
+     "do": "link-ok",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "ALREADY LINKED"
+     }
+    },
+    {
+     "do": "link-other",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "CONFLICT"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Find the user when a message arrives",
+   "note": "With a user resolver, your own transaction-to-user table is asked for every message without a user. Here it knows the chain.",
+   "resolver": {
+    "orig-3001": "u-7e3f"
+   },
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a30"
+    }
+   ]
+  },
+  {
+   "name": "Add-ons: one purchase, two products",
+   "note": "Each line item is stored as its own entitlement, so access is decided per product.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA1"
+    }
+   ]
+  },
+  {
+   "name": "Google acknowledgement",
+   "note": "The purchase is acknowledged only after it is stored. If Google refuses, the push is retried, the duplicate is skipped, and the acknowledgement is sent again.",
+   "steps": [
+    {
+     "ack": "down"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 500,
+      "detail": "",
+      "stamp": "RETRY"
+     },
+     "send": "gk"
+    },
+    {
+     "ack": "up"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": true,
+      "chains": {
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "DUPLICATE"
+     },
+     "send": "gk"
+    }
+   ]
+  },
+  {
+   "name": "A lost upgrade message",
+   "note": "Only the message for token C arrived. The library asks Google about token B and follows its link to token A, so all three chains end up consistent.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "register": "g3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokB": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-10",
+        "user": "",
+        "version": 1
+       },
+       "google|tokC": {
+        "autoRenew": null,
+        "expires": "2026-04-10",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 3,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gU"
+    }
+   ]
+  },
+  {
+   "name": "Repair a lost webhook with Reconcile",
+   "note": "The renewal webhook never arrived. Reconcile asks Apple for the current status and applies it. Running it again changes nothing.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "unchanged",
+      "stamp": "UNCHANGED"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Refund requests need consent",
+   "note": "Apple asks how much of a purchase was used. The answer is sent only if the customer agreed. If your lookup fails inside 12 hours the answer is 500, so Apple asks again.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "NOT SENT"
+     },
+     "send": "c2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "SENT"
+     },
+     "send": "c1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 500,
+      "detail": "",
+      "stamp": "RETRY"
+     },
+     "send": "c3"
+    }
+   ]
+  },
+  {
+   "name": "Auto-renew switched off",
+   "note": "The renewal setting is stored next to the state. An active chain with auto-renew off is a churn signal.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": false,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-12",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a8"
+    }
+   ]
+  },
+  {
+   "name": "Erase a user",
+   "note": "Erasing deletes the user's entitlements. Event IDs are kept, so a redelivered webhook cannot bring them back.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "do": "forget",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 0,
+      "detail": "1",
+      "stamp": "ERASED"
+     }
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "DUPLICATE"
+     },
+     "send": "a3"
     }
    ]
   },
@@ -1453,10 +3161,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1465,7 +3177,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -1474,10 +3188,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -1486,7 +3204,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a2"
@@ -1495,10 +3215,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -1507,7 +3231,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -1516,10 +3242,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-08",
         "refunded": [],
         "state": "grace",
@@ -1528,7 +3258,9 @@
         "version": 4
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a4"
@@ -1537,10 +3269,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1549,7 +3285,9 @@
         "version": 5
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a5"
@@ -1558,10 +3296,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1570,7 +3312,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a6"
@@ -1579,10 +3323,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1591,7 +3339,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a7"
@@ -1600,10 +3350,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1612,7 +3366,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a8"
@@ -1621,10 +3377,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1633,7 +3393,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a9"
@@ -1642,10 +3404,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1654,7 +3420,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "a10"
@@ -1663,10 +3431,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1675,7 +3447,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "a11"
@@ -1684,10 +3458,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -1696,7 +3474,9 @@
         "version": 5
        }
       },
+      "changes": 0,
       "code": 401,
+      "detail": "",
       "stamp": "FORGED"
      },
      "send": "a12"
@@ -1711,10 +3491,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -1723,7 +3507,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -1732,10 +3518,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -1744,7 +3534,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g2"
@@ -1753,10 +3545,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1765,6 +3561,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -1773,7 +3570,9 @@
         "version": 1
        }
       },
+      "changes": 2,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g3"
@@ -1782,10 +3581,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1794,6 +3597,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -1802,7 +3606,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "g4"
@@ -1811,10 +3617,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1823,6 +3633,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -1831,7 +3642,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g5"
@@ -1840,10 +3653,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1852,6 +3669,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "refunded",
@@ -1860,7 +3678,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g6"
@@ -1869,10 +3689,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1881,6 +3705,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "refunded",
@@ -1889,7 +3714,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g7"
@@ -1898,10 +3725,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1910,6 +3741,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "refunded",
@@ -1918,7 +3750,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g8"
@@ -1927,10 +3761,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1939,6 +3777,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "refunded",
@@ -1947,7 +3786,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g9"
@@ -1956,10 +3797,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1968,6 +3813,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "refunded",
@@ -1976,7 +3822,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 401,
+      "detail": "",
       "stamp": "REJECTED"
      },
      "send": "g10"
@@ -1985,10 +3833,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "expired",
@@ -1997,6 +3849,7 @@
         "version": 3
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "refunded",
@@ -2005,7 +3858,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 400,
+      "detail": "",
       "stamp": "REJECTED"
      },
      "send": "g11"
@@ -2020,10 +3875,15 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {},
+      "changes": 0,
       "code": 401,
+      "detail": "",
       "stamp": "FORGED"
      },
      "send": "a12"
@@ -2032,10 +3892,15 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {},
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "a11"
@@ -2044,10 +3909,15 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {},
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "a10"
@@ -2056,10 +3926,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -2068,7 +3942,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a9"
@@ -2077,10 +3953,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -2089,7 +3969,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a8"
@@ -2098,10 +3980,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -2110,7 +3996,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a7"
@@ -2119,10 +4007,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -2131,7 +4023,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a6"
@@ -2140,10 +4034,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2152,7 +4050,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a5"
@@ -2161,10 +4061,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2173,7 +4077,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a4"
@@ -2182,10 +4088,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2194,7 +4104,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a3"
@@ -2203,10 +4115,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2215,7 +4131,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a2"
@@ -2224,10 +4142,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2236,7 +4158,9 @@
         "version": 2
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a1"
@@ -2252,10 +4176,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2264,7 +4192,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -2273,10 +4203,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-05",
         "refunded": [],
         "state": "active",
@@ -2285,7 +4219,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a10"
@@ -2294,10 +4230,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-05",
         "refunded": [],
         "state": "active",
@@ -2306,6 +4246,7 @@
         "version": 2
        },
        "google|tokT": {
+        "autoRenew": null,
         "expires": "2026-04-05",
         "refunded": [],
         "state": "active",
@@ -2314,7 +4255,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g7"
@@ -2323,10 +4266,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-05",
         "refunded": [],
         "state": "active",
@@ -2335,6 +4282,7 @@
         "version": 2
        },
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2343,6 +4291,7 @@
         "version": 1
        },
        "google|tokT": {
+        "autoRenew": null,
         "expires": "2026-04-05",
         "refunded": [],
         "state": "active",
@@ -2351,7 +4300,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -2366,10 +4317,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2378,7 +4333,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -2390,10 +4347,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2402,7 +4363,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 500,
+      "detail": "",
       "stamp": "RETRY"
      },
      "send": "g2"
@@ -2411,10 +4374,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2423,7 +4390,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 500,
+      "detail": "",
       "stamp": "RETRY"
      },
      "send": "g6"
@@ -2432,10 +4401,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2444,7 +4417,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g8"
@@ -2456,10 +4431,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -2468,7 +4447,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g2"
@@ -2486,10 +4467,15 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {},
+      "changes": 0,
       "code": 500,
+      "detail": "",
       "stamp": "RETRY"
      },
      "send": "g1"
@@ -2498,10 +4484,15 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {},
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g8"
@@ -2513,10 +4504,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2525,7 +4520,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -2534,10 +4531,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2546,7 +4547,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "DUPLICATE"
      },
      "send": "g1"
@@ -2561,10 +4564,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "",
         "refunded": [],
         "state": "expired",
@@ -2573,6 +4580,7 @@
         "version": 1
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -2581,7 +4589,9 @@
         "version": 1
        }
       },
+      "changes": 2,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g3"
@@ -2590,10 +4600,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "",
         "refunded": [],
         "state": "expired",
@@ -2602,6 +4616,7 @@
         "version": 1
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -2610,7 +4625,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "g4"
@@ -2619,10 +4636,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "",
         "refunded": [],
         "state": "expired",
@@ -2631,6 +4652,7 @@
         "version": 1
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "active",
@@ -2639,7 +4661,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "g2"
@@ -2654,10 +4678,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2666,7 +4694,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -2675,10 +4705,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -2687,7 +4721,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -2696,10 +4732,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-08",
         "refunded": [],
         "state": "grace",
@@ -2708,7 +4748,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a4"
@@ -2717,10 +4759,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2729,7 +4775,9 @@
         "version": 4
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a5"
@@ -2744,10 +4792,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2756,7 +4808,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -2765,10 +4819,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2777,6 +4835,7 @@
         "version": 1
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "",
         "refunded": [],
         "state": "refunded",
@@ -2785,7 +4844,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g6"
@@ -2794,10 +4855,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [],
         "state": "active",
@@ -2806,6 +4871,7 @@
         "version": 2
        },
        "google|tokB": {
+        "autoRenew": null,
         "expires": "",
         "refunded": [],
         "state": "refunded",
@@ -2814,7 +4880,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g2"
@@ -2829,10 +4897,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -2841,7 +4913,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -2850,10 +4924,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -2862,7 +4940,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -2871,10 +4951,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -2885,7 +4969,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a6"
@@ -2894,10 +4980,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-03-01",
         "refunded": [
          "t-mar",
@@ -2909,7 +4999,9 @@
         "version": 4
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a7"
@@ -2924,10 +5016,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -2936,7 +5032,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a13"
@@ -2945,10 +5043,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2957,7 +5059,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a14"
@@ -2966,10 +5070,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -2978,6 +5086,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -2986,7 +5095,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a16"
@@ -2995,10 +5106,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3007,6 +5122,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3015,6 +5131,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3023,7 +5140,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a17"
@@ -3032,10 +5151,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3044,6 +5167,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3052,6 +5176,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3060,6 +5185,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3070,7 +5196,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a18"
@@ -3079,10 +5207,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3091,6 +5223,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3099,6 +5232,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3107,6 +5241,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3117,7 +5252,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "a19"
@@ -3126,10 +5263,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3138,6 +5279,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3146,6 +5288,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3154,6 +5297,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3164,7 +5308,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "a20"
@@ -3173,10 +5319,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3185,6 +5335,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3193,6 +5344,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3201,6 +5353,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3211,7 +5364,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "SKIPPED"
      },
      "send": "a21"
@@ -3220,10 +5375,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3232,6 +5391,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3240,6 +5400,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3248,6 +5409,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3258,7 +5420,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "SKIPPED"
      },
      "send": "a22"
@@ -3267,10 +5431,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3279,6 +5447,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3287,6 +5456,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3295,6 +5465,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3305,7 +5476,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "SKIPPED"
      },
      "send": "a23"
@@ -3314,10 +5487,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3326,6 +5503,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3334,6 +5512,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3342,6 +5521,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3352,6 +5532,7 @@
         "version": 1
        },
        "apple|orig-2024": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-24"
@@ -3362,7 +5543,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a24"
@@ -3371,10 +5554,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3383,6 +5570,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3391,6 +5579,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3399,6 +5588,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3409,6 +5599,7 @@
         "version": 1
        },
        "apple|orig-2024": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-24"
@@ -3419,7 +5610,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "SKIPPED"
      },
      "send": "a25"
@@ -3428,10 +5621,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "expired",
@@ -3440,6 +5637,7 @@
         "version": 2
        },
        "apple|orig-2016": {
+        "autoRenew": null,
         "expires": "2026-03-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3448,6 +5646,7 @@
         "version": 1
        },
        "apple|orig-2017": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "billing_retry",
@@ -3456,6 +5655,7 @@
         "version": 1
        },
        "apple|orig-2018": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-18"
@@ -3466,6 +5666,7 @@
         "version": 1
        },
        "apple|orig-2024": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-24"
@@ -3476,6 +5677,7 @@
         "version": 1
        },
        "apple|orig-2026": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [
          "t-n-26"
@@ -3486,7 +5688,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a26"
@@ -3501,10 +5705,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -3513,7 +5721,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -3522,10 +5732,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -3534,7 +5748,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -3543,10 +5759,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -3557,7 +5777,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a6"
@@ -3566,10 +5788,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -3580,7 +5806,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a15"
@@ -3595,10 +5823,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3607,7 +5839,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g12"
@@ -3616,10 +5850,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3628,7 +5866,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g13"
@@ -3637,10 +5877,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3649,6 +5893,7 @@
         "version": 1
        },
        "google|tokE": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -3657,7 +5902,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g14"
@@ -3666,10 +5913,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3678,6 +5929,7 @@
         "version": 1
        },
        "google|tokE": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -3686,6 +5938,7 @@
         "version": 1
        },
        "google|tokF": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "grace",
@@ -3694,7 +5947,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g15"
@@ -3703,10 +5958,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3715,6 +5974,7 @@
         "version": 1
        },
        "google|tokE": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -3723,6 +5983,7 @@
         "version": 1
        },
        "google|tokF": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "grace",
@@ -3731,6 +5992,7 @@
         "version": 1
        },
        "google|tokG": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "paused",
@@ -3739,7 +6001,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g16"
@@ -3748,10 +6012,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3760,6 +6028,7 @@
         "version": 1
        },
        "google|tokE": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -3768,6 +6037,7 @@
         "version": 1
        },
        "google|tokF": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "grace",
@@ -3776,6 +6046,7 @@
         "version": 1
        },
        "google|tokG": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "paused",
@@ -3784,7 +6055,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "SKIPPED"
      },
      "send": "g17"
@@ -3793,10 +6066,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -3805,6 +6082,7 @@
         "version": 1
        },
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3813,6 +6091,7 @@
         "version": 1
        },
        "google|tokE": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -3821,6 +6100,7 @@
         "version": 1
        },
        "google|tokF": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "grace",
@@ -3829,6 +6109,7 @@
         "version": 1
        },
        "google|tokG": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "paused",
@@ -3837,7 +6118,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "g1"
@@ -3846,10 +6129,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": true
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "google|tokA": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -3858,6 +6145,7 @@
         "version": 1
        },
        "google|tokC": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "expired",
@@ -3866,6 +6154,7 @@
         "version": 1
        },
        "google|tokE": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "active",
@@ -3874,6 +6163,7 @@
         "version": 1
        },
        "google|tokF": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "grace",
@@ -3882,6 +6172,7 @@
         "version": 1
        },
        "google|tokG": {
+        "autoRenew": null,
         "expires": "2026-04-20",
         "refunded": [],
         "state": "paused",
@@ -3890,7 +6181,9 @@
         "version": 1
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "IGNORED"
      },
      "send": "g18"
@@ -3905,10 +6198,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -3917,7 +6214,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -3926,10 +6225,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -3938,7 +6241,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -3947,10 +6252,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -3961,7 +6270,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a6"
@@ -3970,10 +6281,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -3984,7 +6299,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a15"
@@ -3993,10 +6310,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -4005,7 +6326,9 @@
         "version": 4
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a9"
@@ -4014,10 +6337,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -4026,7 +6353,9 @@
         "version": 4
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "DUPLICATE"
      },
      "send": "a15"
@@ -4041,10 +6370,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-02-01",
         "refunded": [],
         "state": "active",
@@ -4053,7 +6386,9 @@
         "version": 1
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a1"
@@ -4062,10 +6397,14 @@
      "expect": {
       "access": {
        "2026-03-15": true,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [],
         "state": "active",
@@ -4074,7 +6413,9 @@
         "version": 2
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a3"
@@ -4083,10 +6424,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -4097,7 +6442,9 @@
         "version": 3
        }
       },
+      "changes": 1,
       "code": 200,
+      "detail": "",
       "stamp": "APPLIED"
      },
      "send": "a6"
@@ -4106,10 +6453,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -4120,7 +6471,9 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a27"
@@ -4129,10 +6482,14 @@
      "expect": {
       "access": {
        "2026-03-15": false,
-       "2026-04-05": false
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
       },
+      "acked": false,
       "chains": {
        "apple|orig-1001": {
+        "autoRenew": null,
         "expires": "2026-04-01",
         "refunded": [
          "t-mar"
@@ -4143,10 +6500,3171 @@
         "version": 3
        }
       },
+      "changes": 0,
       "code": 200,
+      "detail": "",
       "stamp": "STALE"
      },
      "send": "a28"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "owner kept when a message has no user",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a30"
+    },
+    {
+     "do": "link-main",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "CONFLICT"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "resolver error then success",
+   "resolver": {
+    "orig-3001": "!error"
+   },
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 500,
+      "detail": "",
+      "stamp": "RETRY"
+     },
+     "send": "a30"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "resolver empty answer",
+   "resolver": {
+    "orig-3001": ""
+   },
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a30"
+    },
+    {
+     "do": "link-ok",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3001": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "",
+      "stamp": "LINKED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "link edge cases",
+   "steps": [
+    {
+     "do": "link-unknown",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "NOT FOUND"
+     }
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "do": "link-main",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "CONFLICT"
+     }
+    },
+    {
+     "do": "link-ok",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "NOT FOUND"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile outcomes",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "do": "rc-old",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "stale",
+      "stamp": "STALE"
+     }
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "unchanged",
+      "stamp": "UNCHANGED"
+     }
+    },
+    {
+     "do": "rc-expired",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-refunded",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "stale",
+      "stamp": "STALE"
+     }
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "duplicate",
+      "stamp": "DUPLICATE"
+     }
+    },
+    {
+     "do": "rc-nodate",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "failed",
+      "stamp": "FAILED"
+     }
+    },
+    {
+     "do": "rc-unknown",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "failed",
+      "stamp": "FAILED"
+     }
+    },
+    {
+     "do": "rc-new",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       },
+       "apple|orig-4001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-grace",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       },
+       "apple|orig-4001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "stale",
+      "stamp": "STALE"
+     }
+    },
+    {
+     "do": "rc-retry",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "billing_retry",
+        "updated": "2026-04-12",
+        "user": "u-7e3f",
+        "version": 5
+       },
+       "apple|orig-4001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-family",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "billing_retry",
+        "updated": "2026-04-12",
+        "user": "u-7e3f",
+        "version": 5
+       },
+       "apple|orig-4001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "duplicate",
+      "stamp": "DUPLICATE"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile lifts a refund the service still holds",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-refunded",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "active",
+        "updated": "2026-03-26",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "consumption requests",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "SENT"
+     },
+     "send": "c1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "NOT SENT"
+     },
+     "send": "c2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 500,
+      "detail": "",
+      "stamp": "RETRY"
+     },
+     "send": "c3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "TOO LATE"
+     },
+     "send": "c4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "SENT"
+     },
+     "send": "c1"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "auto-renew mappings",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3201": {
+        "autoRenew": true,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a31"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3201": {
+        "autoRenew": false,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-21",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a32"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-3201": {
+        "autoRenew": true,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-22",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a33"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-3201": {
+        "autoRenew": true,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-22",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": false,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-12",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-3201": {
+        "autoRenew": true,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-22",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a8"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": false,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-12",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-3201": {
+        "autoRenew": true,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-22",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "DUPLICATE"
+     },
+     "send": "a31"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "google auto-renew and unknown linked token",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokQ": {
+        "autoRenew": true,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gT1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokQ": {
+        "autoRenew": false,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-21",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gT2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokQ": {
+        "autoRenew": false,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-21",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokR": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokZZZ": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gT3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokQ": {
+        "autoRenew": false,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-21",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokR": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokS#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-11",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokS#pro.monthly#2": {
+        "autoRenew": null,
+        "expires": "2026-08-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-11",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokZZZ": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gT4"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "add-on shapes",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-12",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gA2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 3,
+      "code": 200,
+      "detail": "applied,applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokN#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "grace",
+        "updated": "2026-03-11",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokN#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "grace",
+        "updated": "2026-03-11",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokN#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "grace",
+        "updated": "2026-03-11",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokN#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "grace",
+        "updated": "2026-03-11",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "SKIPPED"
+     },
+     "send": "gA5"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "add-on refund",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "",
+        "version": 1
+       },
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 3,
+      "code": 200,
+      "detail": "applied,applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA3"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "acknowledgement edge cases",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": true,
+      "chains": {
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gk"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "IGNORED"
+     },
+     "send": "g7"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": true,
+      "chains": {
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "DUPLICATE"
+     },
+     "send": "gk"
+    },
+    {
+     "ack": "down"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokK": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 500,
+      "detail": "",
+      "stamp": "RETRY"
+     },
+     "send": "gk"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "upgrade chain with all tokens known",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokB": {
+        "autoRenew": null,
+        "expires": "2026-03-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "g3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "autoRenew": null,
+        "expires": "2026-03-20",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokC": {
+        "autoRenew": null,
+        "expires": "2026-04-10",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 3,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gU"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "upgrade chain, Play API down for the linked token",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "register": "g3"
+    },
+    {
+     "playDown": true
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 500,
+      "detail": "",
+      "stamp": "RETRY"
+     },
+     "send": "gU"
+    },
+    {
+     "playDown": false
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokA": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokB": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-10",
+        "user": "",
+        "version": 1
+       },
+       "google|tokC": {
+        "autoRenew": null,
+        "expires": "2026-04-10",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 3,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gU"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "erase then link",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "do": "forget",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 0,
+      "detail": "1",
+      "stamp": "ERASED"
+     }
+    },
+    {
+     "do": "link-main",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "NOT FOUND"
+     }
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "DUPLICATE"
+     },
+     "send": "a1"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "database down on actions",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "db": "down"
+    },
+    {
+     "do": "link-main",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "FAILED"
+     }
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "failed",
+      "stamp": "FAILED"
+     }
+    },
+    {
+     "do": "forget",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "",
+      "stamp": "FAILED"
+     }
+    },
+    {
+     "db": "up"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "auto-renew survives a message that does not say",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": false,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-12",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a8"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": false,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a29"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "voided and acknowledged edge cases",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "IGNORED"
+     },
+     "send": "gV1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokY": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gk2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": true,
+      "chains": {
+       "google|tokY": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "IGNORED"
+     },
+     "send": "gk3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokW": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokY": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gP"
+    }
+   ]
+  },
+  {
+   "allowSandbox": true,
+   "hidden": true,
+   "name": "voided test purchase acknowledged when allowed",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": true,
+      "chains": {
+       "google|tokX": {
+        "autoRenew": null,
+        "expires": "2026-04-20",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gk3"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile with a different product",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "do": "rc-active",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    },
+    {
+     "do": "rc-yearly",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-25",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 0,
+      "code": 0,
+      "detail": "duplicate",
+      "stamp": "DUPLICATE"
+     }
+    }
+   ]
+  },
+  {
+   "allowSandbox": true,
+   "hidden": true,
+   "name": "reconcile of a sandbox chain",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-05",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-05",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a10"
+    },
+    {
+     "do": "rc-sandbox",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-05",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile family sharing",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "do": "rc-family",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "revoked",
+        "updated": "2026-03-26",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile grace",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "do": "rc-grace",
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-08",
+        "refunded": [],
+        "state": "grace",
+        "updated": "2026-04-02",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile lifts a refund with a retry snapshot",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "do": "rc-retry",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "apple|orig-1001": {
+        "autoRenew": null,
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "billing_retry",
+        "updated": "2026-04-12",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "changes": 1,
+      "code": 0,
+      "detail": "applied",
+      "stamp": "APPLIED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "reconcile without signed date",
+   "steps": [
+    {
+     "do": "rc-nosigned",
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {},
+      "changes": 0,
+      "code": 0,
+      "detail": "failed",
+      "stamp": "FAILED"
+     }
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "void without order ids",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokV2": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gV2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokV2": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 0,
+      "code": 200,
+      "detail": "",
+      "stamp": "IGNORED"
+     },
+     "send": "gV3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": false,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokN2": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokV2": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "changes": 1,
+      "code": 200,
+      "detail": "",
+      "stamp": "APPLIED"
+     },
+     "send": "gN"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "upgrade over an add-on purchase",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": true,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": true
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 2,
+      "code": 200,
+      "detail": "applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gA1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-03-15 addon.storage": false,
+       "2026-04-05": true,
+       "2026-04-05 addon.storage": false
+      },
+      "acked": false,
+      "chains": {
+       "google|tokM": {
+        "autoRenew": null,
+        "expires": "",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-15",
+        "user": "",
+        "version": 1
+       },
+       "google|tokM#addon.storage": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-15",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokM#pro.monthly": {
+        "autoRenew": null,
+        "expires": "2026-07-01",
+        "refunded": [],
+        "state": "expired",
+        "updated": "2026-03-15",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokU": {
+        "autoRenew": null,
+        "expires": "2026-04-30",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-15",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "changes": 4,
+      "code": 200,
+      "detail": "applied,applied,applied",
+      "stamp": "APPLIED"
+     },
+     "send": "gU2"
     }
    ]
   }

@@ -32,6 +32,8 @@
       <a href="#simulator">Simulator</a>
       <a href="#pipeline">Pipeline</a>
       <a href="#states">States</a>
+      <a href="#users">Users</a>
+      <a href="#repair">Repair</a>
       <a href="#http">HTTP codes</a>
       <a href="#quickstart">Quickstart</a>
       <a href="https://github.com/tggo/go-entitlements">GitHub</a>
@@ -154,7 +156,7 @@
 
 <section id="simulator" aria-labelledby="h-sim">
   <h2 id="h-sim">Try it: send the messages yourself</h2>
-  <p class="prose">Pick a message from the tray, or drag it onto the pipeline. It runs through the same rules as the Go library, ported line by line (sources are named in <code>engine.js</code>). On the right is the record the library keeps, and whether the user has access on the date you choose. Send the same message twice, or send an old one after a new one, and see what the store gets back.</p>
+  <p class="prose">Pick a message from the tray, or drag it onto the pipeline. It runs through the same rules as the Go library, ported line by line (sources are named in <code>engine.js</code>). The third tab, Your code, holds calls your own code makes: linking a user, erasing one, and Reconcile. Below is the record the library keeps, and whether the user has access on the date you choose. Send the same message twice, or send an old one after a new one, and see what the store gets back.</p>
 
   <div id="sim">
     <div class="sim-grid">
@@ -163,11 +165,15 @@
         <div class="tabs" role="tablist" aria-label="Store">
           <button role="tab" id="tab-apple" aria-selected="true" aria-controls="tray" type="button">Apple</button>
           <button role="tab" id="tab-google" aria-selected="false" aria-controls="tray" type="button">Google Play</button>
+          <button role="tab" id="tab-code" aria-selected="false" aria-controls="tray" type="button">Your code</button>
         </div>
+        <p class="hint" id="tray-help" style="margin:0 0 8px"></p>
         <div id="tray" role="tabpanel" aria-label="Messages"></div>
         <div class="ctrls">
           <label><input type="checkbox" id="dbdown"> Your database is down</label>
           <label id="playdown-wrap" hidden><input type="checkbox" id="playdown"> Play API is down</label>
+          <label id="ackdown-wrap" hidden><input type="checkbox" id="ackdown"> Google refuses the acknowledgement</label>
+          <label id="resolver-wrap"><input type="checkbox" id="resolver"> Look users up in my own table</label>
           <label><input type="checkbox" id="sandbox"> Allow test purchases</label>
         </div>
       </div>
@@ -196,13 +202,13 @@
       <div class="ledger-wrap">
         <table>
           <caption class="sr" style="position:absolute;left:-999px">Stored subscriptions</caption>
-          <thead><tr><th scope="col">Store</th><th scope="col">Chain</th><th scope="col">State</th><th scope="col">Expires</th><th scope="col">Version</th><th scope="col">Last event</th></tr></thead>
+          <thead><tr><th scope="col">Store</th><th scope="col">Chain</th><th scope="col">User</th><th scope="col">State</th><th scope="col">Expires</th><th scope="col">Auto-renew</th><th scope="col">Version</th><th scope="col">Last event</th></tr></thead>
           <tbody id="ledger-body"></tbody>
         </table>
       </div>
       <div class="access-row">
-        <span>Does user <code>u-7e3f</code> have <code>pro.monthly</code> on <b id="nowlabel">Mar 15</b>?</span>
-        <span id="access" class="access no" role="status">No access</span>
+        <span>Does user <code>u-7e3f</code> have access on <b id="nowlabel">Mar 15</b>?</span>
+        <span id="accesses" class="accesses" role="status"></span>
         <label>Date <input type="range" id="now" aria-label="Date to check access on"></label>
       </div>
     </div>
@@ -343,7 +349,8 @@
       <tr><td>Apple DID_FAIL_TO_RENEW with GRACE_PERIOD</td><td><span class="pill s-grace">grace</span> until the grace period ends</td></tr>
       <tr><td>Apple DID_FAIL_TO_RENEW, GRACE_PERIOD_EXPIRED</td><td><span class="pill s-billing_retry">billing retry</span></td></tr>
       <tr><td>Apple EXPIRED</td><td><span class="pill s-expired">expired</span></td></tr>
-      <tr><td>Apple REFUND, REVOKE</td><td><span class="pill s-refunded">refunded</span> <span class="pill s-revoked">revoked</span></td></tr>
+      <tr><td>Apple REFUND</td><td>Refunds one transaction. The chain ends only if that was the one granting access, otherwise it is <span class="pill s-refunded">refunded</span> for that period only</td></tr>
+      <tr><td>Apple REVOKE</td><td><span class="pill s-revoked">revoked</span></td></tr>
       <tr><td>Apple plan or renewal-status changes, offers, extensions</td><td>The state Apple reports, and never lifts a refund</td></tr>
       <tr><td>Google ACTIVE, CANCELED (until expiry)</td><td><span class="pill s-active">active</span></td></tr>
       <tr><td>Google IN_GRACE_PERIOD, ON_HOLD, PAUSED</td><td><span class="pill s-grace">grace</span> <span class="pill s-billing_retry">billing retry</span> <span class="pill s-paused">paused</span></td></tr>
@@ -428,6 +435,147 @@
     </div>
     <figcaption>If token B carries no account ID, the user is taken from token A&rsquo;s record.</figcaption>
   </figure>
+  <p class="prose">The same works when messages go missing. Suppose token C replaced token B, which replaced token A, and only C&rsquo;s message arrived. The library asks Google about B, follows B&rsquo;s link to A, and retires every token it finds, up to four. If Google no longer knows a replaced token, that token is retired under its plain key. If Google cannot be reached for it, the push is answered 500 and retried.</p>
+</section>
+
+<section id="addons" aria-labelledby="h-addons">
+  <h2 id="h-addons">Add-ons: one purchase, several products</h2>
+  <p class="prose">A Google subscription with add-ons is one purchase token with several line items, and each item has its own expiry. The library stores each item as its own entitlement, so <code>IsActive(user, product)</code> is right for every product.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 330" role="img" aria-labelledby="dat dad">
+      <title id="dat">One purchase token becomes one entitlement per line item</title>
+      <desc id="dad">Token M has a base plan and a storage add-on. Each becomes its own entitlement, keyed by the token and the product id. IsActive answers per product. A purchase with a single item keeps the plain token as its key. An item with no expiry grants nothing, and a lapsed add-on produces no event. A refund of the purchase refunds every key.</desc>
+      <rect class="box" x="10" y="100" width="170" height="86" rx="4"/>
+      <text class="h" x="24" y="128">Purchase token M</text><text class="s m" x="24" y="150">one push, one fetch from</text><text class="s m" x="24" y="168">the Play API</text>
+      <path class="ln" d="M180 143 H220 V77 H258" marker-end="url(#ar)"/>
+      <path class="ln" d="M180 143 H220 V209 H258" marker-end="url(#ar)"/>
+      <rect class="box ok fok" x="260" y="36" width="280" height="82" rx="4"/>
+      <text class="b" x="274" y="62">tokM#pro.monthly</text><text class="s m" x="274" y="82">base plan, expires Jul 1</text><text class="s m" x="274" y="100">its own state, version and expiry</text>
+      <rect class="box ok fok" x="260" y="168" width="280" height="82" rx="4"/>
+      <text class="b" x="274" y="194">tokM#addon.storage</text><text class="s m" x="274" y="214">add-on, expires Jul 1</text><text class="s m" x="274" y="232">its own state, version and expiry</text>
+      <path class="ln" d="M540 77 H578" marker-end="url(#ar)"/><path class="ln" d="M540 209 H578" marker-end="url(#ar)"/>
+      <rect class="box acc" x="580" y="50" width="130" height="54" rx="4"/><text class="s b" x="592" y="72">IsActive</text><text class="s m" x="592" y="90">pro.monthly</text>
+      <rect class="box acc" x="580" y="182" width="130" height="54" rx="4"/><text class="s b" x="592" y="204">IsActive</text><text class="s m" x="592" y="222">addon.storage</text>
+      <text class="s m" x="10" y="282">One item: the key stays the plain token. An item with no expiry grants nothing.</text>
+      <text class="s m" x="10" y="304">A lapsed add-on makes no event. A refund of the purchase refunds every key.</text>
+    </svg>
+    </div>
+    <figcaption>With several items the key is the token plus the product id, so adding, removing or reordering items never moves a row to another product.</figcaption>
+  </figure>
+</section>
+
+<section id="ack" aria-labelledby="h-ack">
+  <h2 id="h-ack">Google needs an acknowledgement</h2>
+  <p class="prose">Google refunds a subscription that is not acknowledged within three days. When you give the Google handler an acknowledger, it acknowledges new purchases for you, but only after the entitlement is stored. If Google refuses, the handler answers 500, Pub/Sub sends the push again, the duplicate is skipped, and the acknowledgement is tried once more.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 330" role="img" aria-labelledby="dkt dkd">
+      <title id="dkt">Acknowledge only after the purchase is stored</title>
+      <desc id="dkd">A push arrives for a pending purchase that grants access. The entitlement is stored. The handler acknowledges the purchase to Google. If Google refuses, the handler answers 500, Pub/Sub redelivers, the stored event is skipped as a duplicate, and the acknowledgement is retried. Unacknowledged purchases are refunded after three days.</desc>
+      <rect class="box" x="10" y="30" width="190" height="72" rx="4"/><text class="b" x="24" y="56">1 A push arrives</text><text class="s m" x="24" y="76">Play says the purchase is</text><text class="s m" x="24" y="92">pending and grants access</text>
+      <rect class="box ok fok" x="265" y="30" width="190" height="72" rx="4"/><text class="b" x="279" y="56">2 Stored</text><text class="s m" x="279" y="76">The entitlement and the</text><text class="s m" x="279" y="92">event ID are saved</text>
+      <rect class="box acc" x="520" y="30" width="190" height="72" rx="4"/><text class="b" x="534" y="56">3 Acknowledge</text><text class="s m" x="534" y="76">The handler tells Google,</text><text class="s m" x="534" y="92">then answers 200</text>
+      <path class="ln" d="M200 66 H263" marker-end="url(#ar)"/><path class="ln" d="M455 66 H518" marker-end="url(#ar)"/>
+      <path class="ln bad" d="M615 102 V150" marker-end="url(#ar-bad)"/><text class="s b tbad" x="627" y="130">Google refuses</text>
+      <rect class="box bad fbad" x="520" y="152" width="190" height="56" rx="4"/><text class="b" x="534" y="176">Handler answers 500</text><text class="s m" x="534" y="195">the push is not done</text>
+      <path class="ln bad" d="M520 180 H457" marker-end="url(#ar-bad)"/>
+      <rect class="box dup fdup" x="265" y="152" width="190" height="56" rx="4"/><text class="b" x="279" y="176">Pub/Sub redelivers</text><text class="s m" x="279" y="195">the same push again</text>
+      <path class="ln dup" d="M265 180 H202" marker-end="url(#ar)"/>
+      <rect class="box dup fdup" x="10" y="152" width="190" height="56" rx="4"/><text class="b" x="24" y="176">Duplicate, skipped</text><text class="s m" x="24" y="195">then acknowledge again</text>
+      <path class="ln dash" d="M105 152 V120 H520 V104" marker-end="url(#ar)"/>
+      <rect class="sunk" x="10" y="238" width="700" height="84" rx="4"/>
+      <text class="b" x="24" y="262">The deadline</text><text class="s m" x="24" y="282">Not acknowledged within 3 days: Google refunds the purchase.</text><text class="s m" x="24" y="298">Purchases that do not grant access are not acknowledged.</text><text class="s m" x="24" y="314">License-tester purchases are acknowledged too, though the service ignores them by default.</text>
+    </svg>
+    </div>
+    <figcaption>Acknowledging first could leave a purchase that Google treats as settled but your server never stored. Storing first only risks a repeated, harmless acknowledgement.</figcaption>
+  </figure>
+</section>
+
+<section id="users" aria-labelledby="h-users">
+  <h2 id="h-users">Whose purchase is it?</h2>
+  <p class="prose">A subscription belongs to a user only if the library knows the user. Your app should set the user ID when the purchase is made. When it does not, the library still stores the purchase, keyed by the transaction, and logs a warning. There are four ways to attach the user, tried in this order.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 430" role="img" aria-labelledby="dut dud">
+      <title id="dut">Where a chain gets its user, and the owner rule</title>
+      <desc id="dud">The user comes first from the message itself, then from the chain it replaces, then from your resolver. If none knows, the chain is stored without a user. Your app can attach one later with LinkUser. A chain keeps its first owner. A later message naming another user, or none, still moves the state but not the owner. LinkUser for another user returns ErrUserConflict. ForgetUser deletes a user's rows but keeps event IDs.</desc>
+      <rect class="box" x="10" y="20" width="330" height="58" rx="4"/><text class="b" x="24" y="44">1 In the message</text><text class="s m" x="24" y="64">appAccountToken or obfuscatedExternalAccountId</text>
+      <rect class="box" x="10" y="98" width="330" height="58" rx="4"/><text class="b" x="24" y="122">2 The chain it replaces</text><text class="s m" x="24" y="142">a Google upgrade that carries no account ID</text>
+      <rect class="box" x="10" y="176" width="330" height="58" rx="4"/><text class="b" x="24" y="200">3 Your resolver</text><text class="s m" x="24" y="220">WithUserResolver: your own table. An error means retry.</text>
+      <rect class="box dup fdup" x="10" y="254" width="330" height="58" rx="4"/><text class="b" x="24" y="278">4 Nobody yet</text><text class="s m" x="24" y="298">stored without a user, so nobody has access</text>
+      <path class="ln" d="M175 78 V96" marker-end="url(#ar)"/><path class="ln" d="M175 156 V174" marker-end="url(#ar)"/><path class="ln" d="M175 234 V252" marker-end="url(#ar)"/>
+      <text class="s m" x="185" y="92">if none</text><text class="s m" x="185" y="170">if none</text><text class="s m" x="185" y="248">if none</text>
+      <path class="ln ok" d="M340 49 H372 V76 H398" marker-end="url(#ar-ok)"/><path class="ln ok" d="M340 127 H372 V76" /><path class="ln ok" d="M340 205 H372 V127"/>
+      <rect class="box ok fok" x="400" y="20" width="310" height="112" rx="4" style="stroke-width:2.2"/>
+      <text class="h" x="414" y="46">The chain row</text><text class="s" x="414" y="68">One owner: the first user it was given.</text><text class="s m" x="414" y="88">A later message naming another user, or none,</text><text class="s m" x="414" y="106">still moves the state. The owner stays.</text>
+      <rect class="box acc" x="400" y="176" width="310" height="82" rx="4"/>
+      <text class="b" x="414" y="202">Later: LinkUser(source, tx, user)</text><text class="s m" x="414" y="222">Your app reports the purchase. Same user:</text><text class="s m" x="414" y="240">no change. Another user: ErrUserConflict.</text>
+      <path class="ln" d="M340 283 H368 V217 H398" marker-end="url(#ar)"/>
+      <path class="ln acc" d="M555 176 V134" marker-end="url(#ar)"/>
+      <rect class="sunk" x="10" y="338" width="700" height="80" rx="4"/>
+      <text class="b" x="24" y="362">Erasing a user</text><text class="s m" x="24" y="384">ForgetUser deletes the user&rsquo;s entitlements and, in Postgres, the stored raw payloads of their chains.</text><text class="s m" x="24" y="402">Event IDs stay, so a redelivered webhook is still a duplicate and cannot bring the chain back.</text>
+    </svg>
+    </div>
+    <figcaption>The owner rule protects against a client that sends someone else&rsquo;s account ID. Treat the account token as a hint, not as authentication.</figcaption>
+  </figure>
+  <p class="prose">Two more things use the same record. <code>WithOnChange</code> calls your function after each committed change (a new chain, an applied event, a retired chain, a user link), which is where to flip a feature flag or tell the user. <code>Entitlement.AutoRenew</code> keeps the last known renewal setting from Apple&rsquo;s renewal info or Google&rsquo;s plan. An active chain with auto-renew off will lapse at its expiry unless the user turns it back on, which is a useful churn signal. If a store has not said, the value is unknown and is never overwritten by a message that does not say.</p>
+</section>
+
+<section id="repair" aria-labelledby="h-repair">
+  <h2 id="h-repair">Repairing a lost webhook</h2>
+  <p class="prose">Webhooks can be lost: your server was down, or a deploy dropped a request. The App Store Server API lets you ask Apple what is true now. The <code>apple/serverapi</code> package has two repairs. <code>Reconcile</code> fixes one customer. <code>ReplayNotificationHistory</code> re-feeds everything Apple says it could not deliver in a time window.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 440" role="img" aria-labelledby="drt drd">
+      <title id="drt">Reconcile and history replay</title>
+      <desc id="drd">Reconcile: a customer says they paid but have no access. Your code asks Apple for the current status of the chain. The status becomes an event ordered by Apple's own signed date. If the stored state already matches, nothing is written. Otherwise the Service applies it, or reports it duplicate or stale. Replay: after an outage, Apple's history of notifications goes through your parser like webhooks, oldest first. Ones you already received are duplicates, older ones are stale, new ones are applied.</desc>
+      <text class="h" x="10" y="22">Reconcile one customer</text>
+      <rect class="box" x="10" y="36" width="340" height="56" rx="4"/><text class="b" x="24" y="60">Your code calls Reconcile</text><text class="s m" x="24" y="80">&ldquo;I paid but have no access&rdquo; or a nightly check</text>
+      <rect class="box acc" x="10" y="112" width="340" height="56" rx="4"/><text class="b" x="24" y="136">Apple answers with the current status</text><text class="s m" x="24" y="156">Get All Subscription Statuses, signatures verified</text>
+      <rect class="box" x="10" y="188" width="340" height="56" rx="4"/><text class="b" x="24" y="212">One event per chain</text><text class="s m" x="24" y="232">status 1 to 5, ordered by Apple&rsquo;s own signed date</text>
+      <rect class="box" x="10" y="264" width="340" height="56" rx="4"/><text class="b" x="24" y="288">Same state already stored?</text><text class="s m" x="24" y="308">yes: unchanged, nothing is written</text>
+      <path class="ln" d="M180 92 V110" marker-end="url(#ar)"/><path class="ln" d="M180 168 V186" marker-end="url(#ar)"/><path class="ln" d="M180 244 V262" marker-end="url(#ar)"/><path class="ln" d="M180 320 V340" marker-end="url(#ar)"/>
+      <text class="s m" x="190" y="336">no</text>
+      <rect class="box ok fok" x="10" y="342" width="340" height="56" rx="4"/><text class="b" x="24" y="366">Service.Process</text><text class="s m" x="24" y="386">applied, duplicate or stale, like any event</text>
+      <text class="h" x="380" y="22">Replay after an outage</text>
+      <rect class="box acc" x="380" y="36" width="330" height="56" rx="4"/><text class="b" x="394" y="60">Apple&rsquo;s notification history</text><text class="s m" x="394" y="80">what Apple says it tried to send you</text>
+      <rect class="box" x="380" y="112" width="330" height="56" rx="4"/><text class="b" x="394" y="136">Through your parser</text><text class="s m" x="394" y="156">same checks as a webhook, then oldest first</text>
+      <rect class="box ok fok" x="380" y="188" width="330" height="56" rx="4"/><text class="b" x="394" y="212">Service.Process</text><text class="s m" x="394" y="232">one report: applied, duplicate, stale, ignored, failed</text>
+      <path class="ln" d="M545 92 V110" marker-end="url(#ar)"/><path class="ln" d="M545 168 V186" marker-end="url(#ar)"/>
+      <rect class="sunk" x="380" y="264" width="330" height="134" rx="4"/>
+      <text class="b" x="394" y="288">Why it is safe to run twice</text><text class="s m" x="394" y="310">A notification you already got is a duplicate.</text><text class="s m" x="394" y="328">An older one is stale. A snapshot can never</text><text class="s m" x="394" y="346">overwrite a webhook Apple signed later, and an</text><text class="s m" x="394" y="364">older webhook cannot undo a snapshot.</text>
+    </svg>
+    </div>
+    <figcaption>Both repairs use Apple&rsquo;s own clock for ordering, not your server&rsquo;s, so a fast or slow local clock cannot reorder anything. A snapshot in a live state may lift a refund the service still holds, because Apple&rsquo;s answer is authoritative.</figcaption>
+  </figure>
+  <p class="prose">Old notifications may fail verification at today&rsquo;s date, because Apple&rsquo;s signing certificates are short-lived. Those records are counted as failed in the report, not skipped silently. The simulator below models Reconcile. It does not model the history replay, which needs Apple&rsquo;s API over HTTP and has its own tests.</p>
+</section>
+
+<section id="refunds" aria-labelledby="h-refunds">
+  <h2 id="h-refunds">Refund requests need the customer&rsquo;s consent</h2>
+  <p class="prose">When a customer asks Apple for a refund, Apple sends a CONSUMPTION_REQUEST and waits 12 hours for you to say how much of the purchase was used. You may answer only if the customer agreed to share that data. The wrapper in <code>apple/serverapi</code> answers these requests for you and passes every other notification to your normal handler untouched.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 320" role="img" aria-labelledby="dqt dqd">
+      <title id="dqt">How a refund request is answered</title>
+      <desc id="dqd">Apple sends a consumption request. Your responder decides. If the customer consented, the answer is sent and the handler returns 200. If not, nothing is sent and the handler returns 200. If your lookup fails inside the 12 hours the handler returns 500 so Apple asks again. After the 12 hours it returns 200 and gives up.</desc>
+      <rect class="box" x="10" y="110" width="170" height="80" rx="4"/><text class="b" x="24" y="136">CONSUMPTION_</text><text class="b" x="24" y="154">REQUEST</text><text class="s m" x="24" y="174">Apple asks about usage</text>
+      <path class="ln" d="M180 150 H228" marker-end="url(#ar)"/>
+      <rect class="box acc" x="230" y="100" width="170" height="100" rx="4" style="stroke-width:2.2"/><text class="b" x="244" y="126">Your responder</text><text class="s m" x="244" y="146">Did the customer agree</text><text class="s m" x="244" y="164">to share usage data?</text><text class="s m" x="244" y="184">The default is no.</text>
+      <path class="ln ok" d="M400 125 H430 V47 H448" marker-end="url(#ar-ok)"/>
+      <path class="ln" d="M400 150 H448" marker-end="url(#ar)"/>
+      <path class="ln bad" d="M400 175 H430 V222 H448" marker-end="url(#ar-bad)"/>
+      <rect class="box ok fok" x="450" y="14" width="260" height="66" rx="4"/><text class="b" x="464" y="38">Yes: send the answer</text><text class="s m" x="464" y="58">Apple gets it. HTTP 200.</text>
+      <rect class="box" x="450" y="116" width="260" height="66" rx="4"/><text class="b" x="464" y="140">No: send nothing</text><text class="s m" x="464" y="160">HTTP 200. Apple decides without it.</text>
+      <rect class="box bad fbad" x="450" y="196" width="260" height="46" rx="4"/><text class="b" x="464" y="216">Your lookup fails, under 12 hours</text><text class="s m" x="464" y="233">HTTP 500, so Apple asks again</text>
+      <rect class="box" x="450" y="254" width="260" height="46" rx="4"/><text class="b" x="464" y="274">Your lookup fails, after 12 hours</text><text class="s m" x="464" y="291">HTTP 200: a retry could not help</text>
+      <path class="ln bad dash" d="M430 222 V277 H448" marker-end="url(#ar)"/>
+      <text class="s m" x="10" y="250">The library never sets consent. A request with a</text><text class="s m" x="10" y="270">bad signature is answered 401 like any forged message.</text>
+    </svg>
+    </div>
+    <figcaption>Only a responder you write can say the customer agreed. The zero value of the answer means no consent and is never sent.</figcaption>
+  </figure>
 </section>
 
 <section id="http" aria-labelledby="h-http">
@@ -435,7 +583,7 @@
   <p class="prose">The HTTP status is an instruction to the store: stop sending this, or send it again. The rule behind it is whether a retry could change the outcome.</p>
   <figure class="dia">
     <div class="scroll">
-    <svg viewBox="0 0 720 410" role="img" aria-labelledby="d8t d8d">
+    <svg viewBox="0 0 720 432" role="img" aria-labelledby="d8t d8d">
       <title id="d8t">HTTP status by whether a retry can help</title>
       <desc id="d8d">200: applied, duplicate, stale, ignored, unsupported, wrong package, unknown purchase token, or an event that can never be stored. The store stops retrying. 400, 401, 405, 413: malformed body, bad signature or push token, not a POST, body over 1 MiB. Rejected for good and logged as errors. 500: database failure, Play API timeout, server error or rate limit, or wrong Play credentials. The store retries.</desc>
       <rect x="10" y="10" width="700" height="154" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/>
@@ -447,14 +595,15 @@
       <text x="30" y="226" style="font:800 30px var(--display);fill:var(--bad)">4xx</text>
       <text class="b" x="30" y="248">Rejected for good</text><text class="s m" x="30" y="266">Logged at error level.</text>
       <g class="s"><text x="230" y="202">&bull; 401 Bad Apple signature, or bad Pub/Sub token</text><text x="230" y="224">&bull; 400 Malformed body</text><text x="230" y="246">&bull; 405 Not a POST</text><text x="230" y="268">&bull; 413 Body over 1 MiB (the default limit)</text></g>
-      <rect x="10" y="300" width="700" height="100" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+      <rect x="10" y="300" width="700" height="122" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/>
       <text x="30" y="350" style="font:800 40px var(--display);fill:var(--warn)">500</text>
       <text class="b" x="30" y="372">Send it again later</text><text class="s m" x="30" y="390">Nothing was recorded, so a retry works.</text>
-      <g class="s"><text x="230" y="326">&bull; The database failed</text><text x="230" y="348">&bull; The Play API timed out, errored or rate-limited</text><text x="230" y="370">&bull; Play credentials or permissions are wrong (fix needed)</text></g>
+      <g class="s"><text x="230" y="326">&bull; The database failed</text><text x="230" y="348">&bull; The Play API timed out, errored or rate-limited</text><text x="230" y="370">&bull; Play credentials or permissions are wrong (fix needed)</text><text x="230" y="392">&bull; Google refused the acknowledgement</text><text x="230" y="414">&bull; Your user resolver failed</text></g>
     </svg>
     </div>
     <figcaption>Answering 500 for a message that can never succeed would make the store retry it for days. Answering 200 for a failed save would lose the event. Each case gets the code that matches.</figcaption>
   </figure>
+  <p class="prose">One exception sits outside this table. A refund request (CONSUMPTION_REQUEST) answers 500 only while Apple&rsquo;s 12 hours are running, and 200 once they have passed.</p>
 </section>
 
 <section id="defaults" aria-labelledby="h-def">
@@ -469,6 +618,8 @@
       <tr><td>Apple chain must end at the embedded Apple Root CA - G3</td><td>The chain in the header is attacker-supplied</td><td><code>WithRootPool</code>, for local demos only</td></tr>
       <tr><td>An active event with no expiry date is refused</td><td>Otherwise access would never end</td><td>None</td></tr>
       <tr><td>Request bodies are capped at 1 MiB</td><td>Memory safety</td><td><code>WithMaxBodyBytes</code></td></tr>
+      <tr><td>A chain keeps its first owner</td><td>A client can send someone else&rsquo;s account ID</td><td>None. <code>LinkUser</code> refuses another user with <code>ErrUserConflict</code></td></tr>
+      <tr><td>Refund requests are answered only with the customer&rsquo;s consent</td><td>Apple allows it only then; the zero value means no</td><td>None</td></tr>
       <tr><td>The Google package name is required and checked before any fetch</td><td>An attacker cannot make your service account query other apps</td><td>None</td></tr>
     </tbody>
   </table></div>
@@ -522,18 +673,20 @@
   <ul class="plain">
     <li>Unit and integration tests run with <code>-race</code>. Integration tests use real Postgres 17 through Docker, and an end-to-end test drives HTTP, service and Postgres together.</li>
     <li>Apple payloads in tests are signed by a generated CA, so the full verification path runs. Apple&rsquo;s own library test tokens also verify.</li>
+    <li>The simulator on this page is checked against the library on every push. Over 240 recorded steps in about 60 scenarios are replayed through the real parsers, handlers and service on one side and through the JavaScript port on the other, and CI fails if they disagree.</li>
     <li>Mutation testing with gremlins (<code>make mutate</code>) was used to find and kill surviving mutants. It is not part of CI and no score is published.</li>
     <li>A tampered copy of a real notification is rejected with 401.</li>
+    <li>The Server API client was run against the live Apple Sandbox for one app: a TEST notification and 4 history records verified, a Reconcile that applied and then reported unchanged, and a replay that applied 3, ignored 1 and failed none.</li>
     <li>The tests were also run against issues reported on other subscription libraries, listed in <code>docs/prior-art</code>.</li>
   </ul>
   <div class="honest">
-    <p><b>What is not verified.</b> The five real Apple notifications come from a private app. The files are not in the repository, so nobody else can reproduce that run, and the test skips when they are absent. The Google side has never been run against live Play traffic. Its tests use fixtures taken from Google&rsquo;s documentation and public issues, with the Play API mocked.</p>
+    <p><b>What is not verified.</b> The five real Apple notifications and the live Sandbox run come from a private app. The notification files are not in the repository, so nobody else can reproduce that run, and the test skips when they are absent. The Google side has never been run against live Play traffic. Its tests use fixtures taken from Google&rsquo;s documentation and public issues, with the Play API mocked, and the acknowledge call is tested against a local fake of the Play API. The refund-request answer has not been sent to the real Apple API.</p>
   </div>
 </section>
 
 <section id="quickstart" aria-labelledby="h-qs">
   <h2 id="h-qs">Quickstart</h2>
-  <p class="prose">Requires Go 1.26. Install with <code>go get github.com/tggo/go-entitlements</code>. These snippets are compiled as Examples in <code>quickstart_example_test.go</code>, and a test fails if the README drifts from them.</p>
+  <p class="prose">Requires Go 1.26. Install with <code>go get github.com/tggo/go-entitlements</code>. These snippets are compiled as Examples, and a test fails if the README drifts from them.</p>
   <h3>Apple only, in-memory store</h3>
 <pre><code class="lang-go">ctx := context.Background()
 logger := slog.Default()
@@ -578,7 +731,7 @@ for _, e := range list {
 	log.Println(e.ProductID, e.State, e.ExpiresAt)
 }</code></pre>
   <h3>Google Play</h3>
-  <p class="prose">Create a Pub/Sub push subscription that sends an OIDC token. The audience is the endpoint URL and the service account is the one you pass to <code>pubsubauth.New</code>. The service account behind <code>androidpublisher.NewService</code> needs permission to view financial data for the app in the Play Console.</p>
+  <p class="prose">Create a Pub/Sub push subscription that sends an OIDC token. The audience is the endpoint URL and the service account is the one you pass to <code>pubsubauth.New</code>. The service account behind <code>androidpublisher.NewService</code> needs permission to view financial data for the app in the Play Console, and to acknowledge purchases.</p>
 <pre><code class="lang-go">ctx := context.Background()
 logger := slog.Default()
 svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
@@ -587,7 +740,8 @@ playAPI, err := play.NewService(ctx) // credentials from GOOGLE_APPLICATION_CRED
 if err != nil {
 	log.Fatal(err)
 }
-parser, err := google.NewParser(androidpublisher.NewFetcher(playAPI), "com.example.app")
+fetcher := androidpublisher.NewFetcher(playAPI)
+parser, err := google.NewParser(fetcher, "com.example.app")
 if err != nil {
 	log.Fatal(err)
 }
@@ -597,23 +751,117 @@ auth, err := pubsubauth.New("https://example.com/webhooks/google", "push@my-proj
 if err != nil {
 	log.Fatal(err)
 }
-handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger), httpx.WithPushAuthenticator(auth))
+// WithAcknowledger acknowledges new purchases once they are stored; Google
+// refunds purchases that are not acknowledged within 3 days.
+handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger),
+	httpx.WithPushAuthenticator(auth), httpx.WithAcknowledger(fetcher))
 if err != nil {
 	log.Fatal(err)
 }
 http.Handle("/webhooks/google", handler)</code></pre>
-  <p class="prose">The service has <code>Process</code> (used by the handlers), <code>IsActive</code>, <code>Get</code> and <code>ListByUser</code>.</p>
+  <h3>Attach users, react to changes, erase</h3>
+<pre><code class="lang-go">ctx := context.Background()
+logger := slog.Default()
+
+svc := entitlements.NewService(memory.New(),
+	entitlements.WithLogger(logger),
+	// Path 1: look the user up when an event arrives without one, for example
+	// in your originalTransactionId -&gt; user table. An error makes the store retry.
+	entitlements.WithUserResolver(func(ctx context.Context, ev entitlements.Event) (string, error) {
+		return lookupUser(ctx, ev.Source, ev.OriginalTxID) // "" if unknown yet
+	}),
+	// React to a committed change, e.g. to tell the user or flip a feature flag.
+	entitlements.WithOnChange(func(ctx context.Context, before, after *entitlements.Entitlement) {
+		logger.InfoContext(ctx, "entitlement changed", "user", after.UserID, "state", after.State)
+	}))
+
+// Path 2: the app reports the purchase right after it happens. This is
+// idempotent; a chain that already belongs to another user returns
+// entitlements.ErrUserConflict and is never reassigned.
+_, err := svc.LinkUser(ctx, entitlements.SourceApple, "2000000000001", "user-42")
+if errors.Is(err, entitlements.ErrUserConflict) {
+	log.Println("this purchase belongs to another account")
+}
+
+// Erasure request: delete the user's entitlements and stored payloads.
+if _, err := svc.ForgetUser(ctx, "user-42"); err != nil {
+	log.Fatal(err)
+}</code></pre>
+  <h3>Repair a lost webhook</h3>
+<pre><code class="lang-go">ctx := context.Background()
+
+key, err := os.ReadFile("AuthKey_ABC123DEFG.p8")
+if err != nil {
+	log.Fatal(err)
+}
+client, err := serverapi.New(serverapi.Config{
+	IssuerID:      "57246542-96fe-1a63-e053-0824d011072a",
+	KeyID:         "ABC123DEFG",
+	PrivateKeyPEM: key,
+	BundleID:      "com.example.app",
+	Environment:   entitlements.EnvironmentProduction,
+})
+if err != nil {
+	log.Fatal(err)
+}
+svc := entitlements.NewService(memory.New())
+
+// 1. A customer says they paid but have no access: ask Apple.
+results, err := serverapi.Reconcile(ctx, client, svc, "2000000000000001")
+for _, r := range results {
+	fmt.Println(r.Event.OriginalTxID, r.Outcome)
+}
+if err != nil {
+	log.Print(err)
+}
+
+// 2. After an outage, re-feed every notification Apple could not deliver.
+verifier, err := apple.NewVerifier("com.example.app", apple.WithEnvironment(entitlements.EnvironmentProduction))
+if err != nil {
+	log.Fatal(err)
+}
+report, err := serverapi.ReplayNotificationHistory(ctx, client, apple.NewParser(verifier), svc,
+	time.Now().Add(-48*time.Hour), time.Now(), serverapi.ReplayOnlyFailures())
+fmt.Printf("applied %d, duplicates %d, stale %d, failed %d\n", report.Applied, report.Duplicate, report.Stale, report.Failed)
+if err != nil {
+	log.Print(err)
+}</code></pre>
+  <h3>Answer refund requests</h3>
+<pre><code class="lang-go">var (
+	client   *serverapi.Client // from serverapi.New
+	verifier *apple.Verifier   // from apple.NewVerifier
+	next     http.Handler      // httpx.NewAppleHandler(parser, svc)
+)
+responder := serverapi.ConsumptionResponderFunc(func(ctx context.Context, req serverapi.ConsumptionRequest) (serverapi.ConsumptionInfo, error) {
+	consented, err := lookUpConsent(ctx, req.UserID, req.OriginalTransactionID)
+	if err != nil {
+		return serverapi.ConsumptionInfo{}, err // transient: Apple redelivers
+	}
+	if !consented {
+		return serverapi.ConsumptionInfo{}, serverapi.ErrConsentRequired // nothing is sent
+	}
+	return serverapi.ConsumptionInfo{
+		CustomerConsented:     true,
+		DeliveryStatus:        serverapi.DeliveryDelivered,
+		SampleContentProvided: true,
+		RefundPreference:      serverapi.RefundDecline,
+	}, nil
+})
+http.Handle("/apple", serverapi.NewConsumptionHandler(next, serverapi.ConsumptionHandlerConfig{
+	Verifier: verifier, Responder: responder, Sender: client,
+}))</code></pre>
+  <p class="prose">The service has <code>Process</code> (used by the handlers), <code>IsActive</code>, <code>Get</code>, <code>ListByUser</code>, <code>LinkUser</code> and <code>ForgetUser</code>.</p>
 </section>
 
 <section id="limits" aria-labelledby="h-lim">
-  <h2 id="h-lim">What it does not do yet</h2>
+  <h2 id="h-lim">Known limitations</h2>
+  <p class="prose">Status: v0. The core, both parsers, the in-memory and Postgres stores and the HTTP handlers are tested end to end, but the API may change between minor versions until v1. Changes are listed in the release notes.</p>
   <ul class="plain">
-    <li><b>Version 0.</b> The API may change between minor versions until v1.</li>
-        <li><b>Google, acknowledgement.</b> The library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.</li>
-    <li><b>Google, add-ons.</b> One product is stored per purchase token: the line item with the latest expiry.</li>
-    <li><b>Out of scope.</b> Legacy <code>verifyReceipt</code>, Stripe and other web payment providers, consumables, and an App Store Server API client.</li>
-    <li><b>Missing user ID.</b> A notification with no account token is still applied, keyed by transaction, with an empty user. <code>ListByUser("")</code> returns nothing, so attribute these yourself.</li>
+    <li>Google: a subscription with add-ons is stored as one entitlement per line item (<code>purchaseToken#productId</code>). A purchase with a single item keeps the plain <code>purchaseToken</code> key. When a purchase gains or loses an add-on, the row under the old key shape is not rewritten and ends at its own stored expiry; immediate item-based revocation is not tracked.</li>
+    <li><code>go.mod</code> says <code>go 1.26.0</code>, not <code>1.26</code>: the Google API dependencies require it.</li>
+    <li>Privacy: the Postgres store keeps each webhook body in <code>processed_events.raw</code> so that events can be audited. It can contain account identifiers; call <code>Store.Prune</code> on a schedule, and <code>Service.ForgetUser</code> for an erasure request (it clears the payloads of that user's chains and deletes the entitlements, keeping event IDs so redelivered webhooks stay duplicates).</li>
   </ul>
+  <p class="prose"><b>Not in scope.</b> Legacy <code>verifyReceipt</code>, Stripe and other web payment providers, and consumables.</p>
 </section>
 
 </div>

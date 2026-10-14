@@ -12,8 +12,8 @@ description: Keep the GitHub Pages explainer (site/) and its interactive simulat
 | `site/index.html`, `style.css` | page, inline SVG diagrams (each with `<title>`/`<desc>`), light+dark |
 | `site/engine.js` | JS port of the rules: `statemachine.go`, `service.go`, `apple/mapper.go`, `google/parser.go`; source files named in comments |
 | `site/app.js` | UI only; calls `Engine.deliver` / `Engine.snapshot` |
-| `site/scenarios.json` | single source: cards (store messages) + scenarios, each step with `expect` (HTTP code, stamp, stored chains, access on dates) |
-| `site_scenarios_test.go` | replays every card/scenario through the REAL parsers, handlers, Service and memory store (only the Play fetcher and Pub/Sub auth are fakes) |
+| `site/scenarios.json` | single source: cards (store messages), actions (calls your code makes: LinkUser, ForgetUser, Reconcile) and scenarios; each step with an outcome has `expect` (HTTP code, stamp, detail, ack, OnChange count, stored chains, access on dates and products) |
+| `site_scenarios_test.go` | replays every card/scenario through the REAL parsers, handlers, Service, memory store, consumption wrapper and `serverapi.Reconcile` (fakes: Play API with one subscription per purchase token, Pub/Sub auth, the acknowledge call, the App Store Server API answer). `ReplayNotificationHistory` is not simulated |
 | `site/check-scenarios.js` | replays the same JSON through `engine.js` (node, CI + before each deploy) |
 
 ## When library behaviour changes
@@ -32,6 +32,8 @@ description: Keep the GitHub Pages explainer (site/) and its interactive simulat
 Go wins. Fix `engine.js`. If Go looks wrong, stop and report — do not edit library code from here.
 
 ## Adding a card or scenario
+
+- Step kinds: `send` (card), `do` (action), `db`, `playDown`, `ack` (up/down), `register` (tell the fake Play API about a card without delivering it). Scenario fields: `allowSandbox`, `resolver` (tx to user, `!error` fails).
 
 - Apple cards are signed at test time by a throwaway CA; forged cards by an untrusted second CA.
 - Give each Apple billing period its own `txn` (`t-jan`, `t-feb`, …) so refunds name the right period.
