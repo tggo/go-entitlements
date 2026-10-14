@@ -1,6 +1,8 @@
 # go-entitlements
 
-**[Illustrated explainer with an interactive simulator](https://tggo.github.io/go-entitlements/)**
+[![The simulator: send store messages through the library and watch each step, the HTTP answer and the stored state](docs/img/simulator.png)](https://tggo.github.io/go-entitlements/)
+
+**[Try the interactive simulator](https://tggo.github.io/go-entitlements/)**: send Apple and Google messages through the library (duplicates, late refunds, forged signatures, upgrades) and watch what it stores and what HTTP code the store gets back.
 
 A Go library that turns App Store Server Notifications V2 and Google Play Real-Time Developer Notifications into one ordered, idempotent subscription state per user and product. You mount two HTTP handlers, and your code asks one question: does this user currently have access to this product.
 
