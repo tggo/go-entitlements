@@ -5,3 +5,8 @@ cover.filtered.out
 /demo/
 .DS_Store
 testdata/real/
+
+# App Store Connect API keys: never commit
+*.p8
+AuthKey_*
+!testdata/prior-art/**

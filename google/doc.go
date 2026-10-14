@@ -7,10 +7,18 @@
 //
 // # Acknowledgement
 //
-// This package never acknowledges purchases. Google refunds a subscription
-// that is not acknowledged within 3 days, so the caller (the app via Play
-// Billing, or the backend through purchases.subscriptions.acknowledge) is
-// responsible. SubscriptionPurchaseV2.AcknowledgementState is exposed for that.
+// Google refunds a subscription that is not acknowledged within 3 days.
+// Parser.ParseResult reports in Result.Ack the purchases that are still
+// pending (acknowledgementState ACKNOWLEDGEMENT_STATE_PENDING) and grant
+// access (active, canceled, grace). Acknowledger is the interface that does the
+// call; google/androidpublisher implements it with
+// purchases.subscriptions.acknowledge (subscriptionsv2 has no acknowledge
+// method; the subscription id in its path is optional since 2025-05-21, and
+// the notification's subscriptionId is used, or the first item's product for add-on purchases whose RTDN has none). Acknowledge only after the event
+// is stored, and treat ErrAlreadyAcknowledged, ErrPurchaseNotFound and
+// ErrPurchaseInvalid as final. httpx.WithAcknowledger wires this up and retries
+// through Pub/Sub redelivery. Test purchases are acknowledged too.
+// See https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions/acknowledge.
 //
 // # Expiry
 //
@@ -30,11 +38,53 @@
 // no floor, no extension. If it is not in the future, entitlements.Entitlement.Active
 // is false. A grace subscription without expiryTime returns ErrNoExpiry.
 //
+// # Add-ons
+//
+// A subscription with add-ons is one purchase token with several line items,
+// each with its own expiryTime, and its RTDN carries no subscriptionId
+// (https://developer.android.com/google/play/billing/subscription-with-addons;
+// lineItems in
+// https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2).
+// Each line item becomes its own entitlement, so IsActive(user, product) is
+// right per product. ParseAll returns one Event per item. A purchase that
+// yields exactly one item is keyed by the plain purchase token, as before add-ons
+// were supported, so existing stored rows stay valid. With several items the
+// key is purchaseToken + "#" + productId and the event ID is messageId + "#" +
+// productId. The product, not a position, is in the key so that adding,
+// removing or reordering items does not rebind a row to another product.
+//
+// An item without expiryTime (a deferred replacement that has not taken effect
+// yet) grants nothing and yields no event. A removed add-on "expires at the end
+// of its current billing period" (same page): with several items an active item
+// whose expiryTime has passed yields no event, because its stored row already
+// ends at that time. When a purchase changes shape (one item gains an add-on,
+// or loses it) the row under the old key shape is not rewritten; it ends at its
+// own stored expiryTime. Immediate item-based revocation is not tracked.
+//
+// Parse returns ErrMultipleEvents instead of silently dropping items; use
+// ParseAll or ParseResult.
+//
 // # Upgrades
 //
 // linkedPurchaseToken becomes Event.SupersedesTxID only when the new purchase
 // grants access (active, canceled, grace). A canceled pending upgrade, or an
-// expired or held link, never retires the old chain.
+// expired or held link, never retires the old chain. The replaced token is
+// fetched (subscriptionsv2.get) to learn its keys: a replaced add-on
+// subscription is retired item by item, and the chain is followed through
+// linkedPurchaseToken (at most MaxLinkedTokens tokens, cycles stop it), so
+// retiring C (linked B, linked A) also retires A when only C's notification
+// arrived. A replaced token that Google no longer knows (404, 410, 400) is
+// retired by its plain key; a transient failure is returned so the push is
+// retried. The first replaced token's plain key is retired through
+// SupersedesTxID, which also hands its user to a new token without account ids.
+//
+// # Syncing from a purchase token
+//
+// ParseToken maps the current state of a token the app sends right after a
+// purchase, so access does not wait for the push. Its event IDs are digests of
+// the state, so repeating a sync dedupes, and its OccurredAt is the fetch time
+// minus the clock-skew margin, so a sync cannot overwrite a push that is newer
+// than the state it fetched.
 //
 // # Voided purchases
 //
@@ -45,7 +95,8 @@
 // (https://developer.android.com/google/play/billing/rtdn-reference).
 //
 // The push is not trusted on its own: the parser fetches the subscription and
-// applies the void only if the voided orderId is the latest successful order
+// applies the void to every key of the purchase (the plain token and, with
+// several items, each item) only if the voided orderId is the latest successful order
 // of a line item (a void of an older renewal order does not end a running
 // subscription). When Google returns no order ids, the void applies only if
 // the subscription no longer grants access. Otherwise Parse returns

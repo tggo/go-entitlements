@@ -7,6 +7,7 @@
     "product": "pro.monthly",
     "signed": "2026-01-01",
     "tx": "orig-1001",
+    "txn": "t-jan",
     "type": "SUBSCRIBED",
     "userId": "u-7e3f",
     "uuid": "n-01"
@@ -22,6 +23,7 @@
     "product": "pro.monthly",
     "signed": "2026-02-01",
     "tx": "orig-1001",
+    "txn": "t-feb",
     "type": "DID_RENEW",
     "userId": "u-7e3f",
     "uuid": "n-02"
@@ -37,6 +39,7 @@
     "product": "pro.monthly",
     "signed": "2026-03-01",
     "tx": "orig-1001",
+    "txn": "t-mar",
     "type": "DID_RENEW",
     "userId": "u-7e3f",
     "uuid": "n-03"
@@ -54,6 +57,7 @@
     "signed": "2026-04-01",
     "subtype": "GRACE_PERIOD",
     "tx": "orig-1001",
+    "txn": "t-apr",
     "type": "DID_FAIL_TO_RENEW",
     "userId": "u-7e3f",
     "uuid": "n-04"
@@ -69,6 +73,7 @@
     "product": "pro.monthly",
     "signed": "2026-04-08",
     "tx": "orig-1001",
+    "txn": "t-apr",
     "type": "EXPIRED",
     "userId": "u-7e3f",
     "uuid": "n-05"
@@ -85,6 +90,7 @@
     "signed": "2026-03-10",
     "tx": "orig-1001",
     "txType": "Auto-Renewable Subscription",
+    "txn": "t-mar",
     "type": "REFUND",
     "userId": "u-7e3f",
     "uuid": "n-06"
@@ -100,6 +106,7 @@
     "product": "pro.monthly",
     "signed": "2026-03-10",
     "tx": "orig-1001",
+    "txn": "t-feb",
     "type": "REFUND",
     "userId": "u-7e3f",
     "uuid": "n-07"
@@ -116,6 +123,7 @@
     "signed": "2026-03-12",
     "status": 1,
     "tx": "orig-1001",
+    "txn": "t-mar",
     "type": "DID_CHANGE_RENEWAL_STATUS",
     "userId": "u-7e3f",
     "uuid": "n-08"
@@ -132,6 +140,7 @@
     "signed": "2026-03-14",
     "status": 1,
     "tx": "orig-1001",
+    "txn": "t-mar",
     "type": "REFUND_REVERSED",
     "userId": "u-7e3f",
     "uuid": "n-09"
@@ -177,6 +186,7 @@
     "product": "pro.monthly",
     "signed": "2026-03-20",
     "tx": "orig-1001",
+    "txn": "t-mar",
     "type": "REFUND",
     "userId": "u-7e3f",
     "uuid": "n-12"
@@ -398,6 +408,7 @@
     "product": "pro.monthly",
     "signed": "2026-03-10",
     "tx": "orig-1001",
+    "txn": "t-mar",
     "type": "DID_RENEW",
     "userId": "u-7e3f",
     "uuid": "n-15"
@@ -706,6 +717,40 @@
    "src": "apple",
    "sub": "golden-test only",
    "title": "status change with a revocation date"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-05",
+    "tx": "orig-1001",
+    "txn": "t-new",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-27"
+   },
+   "hidden": true,
+   "id": "a27",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "renewal of a new transaction, same expiry as the chain"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-12",
+    "tx": "orig-1001",
+    "txn": "t-mar",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-28"
+   },
+   "hidden": true,
+   "id": "a28",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "renewal of the refunded transaction, signed after the refund"
   }
  ],
  "checkDates": [
@@ -727,6 +772,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -747,6 +793,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -767,6 +814,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -793,6 +841,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -813,6 +862,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -833,6 +883,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -859,6 +910,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -879,6 +931,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -899,6 +952,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -925,6 +979,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -945,6 +1000,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -965,6 +1021,9 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
         "state": "refunded",
         "updated": "2026-03-10",
         "user": "u-7e3f",
@@ -985,6 +1044,9 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
         "state": "refunded",
         "updated": "2026-03-10",
         "user": "u-7e3f",
@@ -1005,6 +1067,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-14",
         "user": "u-7e3f",
@@ -1031,6 +1094,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -1051,6 +1115,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -1071,6 +1136,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -1086,7 +1152,7 @@
   },
   {
    "name": "Refund of an old renewal",
-   "note": "Refunding the February renewal does not end a chain that already runs to April.",
+   "note": "Refunding the February renewal does not end a chain that already runs to April. The refund is recorded against that one transaction.",
    "steps": [
     {
      "expect": {
@@ -1097,6 +1163,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -1117,6 +1184,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -1137,16 +1205,113 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [
+         "t-feb"
+        ],
         "state": "active",
-        "updated": "2026-03-01",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a7"
+    }
+   ]
+  },
+  {
+   "name": "A refund before the renewal it does not concern",
+   "note": "February is refunded first, which ends the chain. The March renewal then arrives, signed earlier than the refund, and brings it back because it is a different transaction.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-02-01",
         "user": "u-7e3f",
         "version": 2
        }
       },
       "code": 200,
-      "stamp": "STALE"
+      "stamp": "APPLIED"
+     },
+     "send": "a2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "refunded": [
+         "t-feb"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
      },
      "send": "a7"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-feb"
+        ],
+        "state": "active",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
     }
    ]
   },
@@ -1163,6 +1328,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -1183,6 +1349,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1190,6 +1357,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1210,6 +1378,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1217,6 +1386,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1261,6 +1431,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -1287,6 +1458,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -1307,6 +1479,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -1327,6 +1500,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -1347,6 +1521,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-08",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -1367,6 +1542,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1387,6 +1563,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1407,6 +1584,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1427,6 +1605,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1447,6 +1626,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1467,6 +1647,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1487,6 +1668,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1507,6 +1689,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1533,6 +1716,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -1553,6 +1737,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -1573,6 +1758,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1580,6 +1766,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1600,6 +1787,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1607,6 +1795,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1627,6 +1816,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1634,6 +1824,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-25",
         "user": "u-7e3f",
@@ -1654,6 +1845,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1661,6 +1853,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "u-7e3f",
@@ -1681,6 +1874,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1688,6 +1882,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "u-7e3f",
@@ -1708,6 +1903,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1715,6 +1911,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "u-7e3f",
@@ -1735,6 +1932,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1742,6 +1940,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "u-7e3f",
@@ -1762,6 +1961,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1769,6 +1969,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "u-7e3f",
@@ -1789,6 +1990,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "u-7e3f",
@@ -1796,6 +1998,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "u-7e3f",
@@ -1858,6 +2061,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-14",
         "user": "u-7e3f",
@@ -1878,6 +2082,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-14",
         "user": "u-7e3f",
@@ -1898,6 +2103,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-14",
         "user": "u-7e3f",
@@ -1918,6 +2124,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-14",
         "user": "u-7e3f",
@@ -1938,6 +2145,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1958,6 +2166,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1978,6 +2187,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -1998,6 +2208,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -2018,6 +2229,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -2045,6 +2257,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2065,6 +2278,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-05",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-05",
         "user": "u-7e3f",
@@ -2085,6 +2299,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-05",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-05",
         "user": "u-7e3f",
@@ -2092,6 +2307,7 @@
        },
        "google|tokT": {
         "expires": "2026-04-05",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-05",
         "user": "u-7e3f",
@@ -2112,6 +2328,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-05",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-05",
         "user": "u-7e3f",
@@ -2119,6 +2336,7 @@
        },
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2126,6 +2344,7 @@
        },
        "google|tokT": {
         "expires": "2026-04-05",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-05",
         "user": "u-7e3f",
@@ -2152,6 +2371,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2175,6 +2395,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2195,6 +2416,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2215,6 +2437,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2238,6 +2461,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -2294,6 +2518,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2314,6 +2539,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2340,6 +2566,7 @@
       "chains": {
        "google|tokA": {
         "expires": "",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "",
@@ -2347,6 +2574,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "",
@@ -2367,6 +2595,7 @@
       "chains": {
        "google|tokA": {
         "expires": "",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "",
@@ -2374,6 +2603,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "",
@@ -2394,6 +2624,7 @@
       "chains": {
        "google|tokA": {
         "expires": "",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-02-20",
         "user": "",
@@ -2401,6 +2632,7 @@
        },
        "google|tokB": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-20",
         "user": "",
@@ -2427,6 +2659,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2447,6 +2680,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -2467,6 +2701,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-08",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2487,6 +2722,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-08",
         "user": "u-7e3f",
@@ -2513,6 +2749,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2533,6 +2770,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2540,6 +2778,7 @@
        },
        "google|tokB": {
         "expires": "",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "",
@@ -2560,6 +2799,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-03-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-02-01",
         "user": "u-7e3f",
@@ -2567,6 +2807,7 @@
        },
        "google|tokB": {
         "expires": "",
+        "refunded": [],
         "state": "refunded",
         "updated": "2026-03-28",
         "user": "",
@@ -2593,6 +2834,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -2613,6 +2855,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -2633,6 +2876,9 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
         "state": "refunded",
         "updated": "2026-03-10",
         "user": "u-7e3f",
@@ -2653,6 +2899,10 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-03-01",
+        "refunded": [
+         "t-mar",
+         "t-feb"
+        ],
         "state": "refunded",
         "updated": "2026-03-10",
         "user": "u-7e3f",
@@ -2679,6 +2929,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2699,6 +2950,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2719,6 +2971,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2726,6 +2979,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2746,6 +3000,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2753,6 +3008,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2760,6 +3016,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2780,6 +3037,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2787,6 +3045,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2794,6 +3053,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2801,6 +3061,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2821,6 +3084,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2828,6 +3092,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2835,6 +3100,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2842,6 +3108,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2862,6 +3131,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2869,6 +3139,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2876,6 +3147,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2883,6 +3155,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2903,6 +3178,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2910,6 +3186,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2917,6 +3194,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2924,6 +3202,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2944,6 +3225,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2951,6 +3233,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2958,6 +3241,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2965,6 +3249,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2985,6 +3272,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -2992,6 +3280,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -2999,6 +3288,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3006,6 +3296,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3026,6 +3319,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -3033,6 +3327,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3040,6 +3335,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3047,6 +3343,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3054,6 +3353,9 @@
        },
        "apple|orig-2024": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-24"
+        ],
         "state": "refunded",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3074,6 +3376,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -3081,6 +3384,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3088,6 +3392,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3095,6 +3400,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3102,6 +3410,9 @@
        },
        "apple|orig-2024": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-24"
+        ],
         "state": "refunded",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3122,6 +3433,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-04-01",
         "user": "u-7e3f",
@@ -3129,6 +3441,7 @@
        },
        "apple|orig-2016": {
         "expires": "2026-03-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3136,6 +3449,7 @@
        },
        "apple|orig-2017": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "billing_retry",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3143,6 +3457,9 @@
        },
        "apple|orig-2018": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-18"
+        ],
         "state": "revoked",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3150,6 +3467,9 @@
        },
        "apple|orig-2024": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-24"
+        ],
         "state": "refunded",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3157,6 +3477,9 @@
        },
        "apple|orig-2026": {
         "expires": "2026-04-20",
+        "refunded": [
+         "t-n-26"
+        ],
         "state": "refunded",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3183,6 +3506,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -3203,6 +3527,7 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-01",
         "user": "u-7e3f",
@@ -3223,6 +3548,9 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
         "state": "refunded",
         "updated": "2026-03-10",
         "user": "u-7e3f",
@@ -3243,6 +3571,9 @@
       "chains": {
        "apple|orig-1001": {
         "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
         "state": "refunded",
         "updated": "2026-03-10",
         "user": "u-7e3f",
@@ -3269,6 +3600,7 @@
       "chains": {
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3289,6 +3621,7 @@
       "chains": {
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3309,6 +3642,7 @@
       "chains": {
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3316,6 +3650,7 @@
        },
        "google|tokE": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3336,6 +3671,7 @@
       "chains": {
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3343,6 +3679,7 @@
        },
        "google|tokE": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3350,6 +3687,7 @@
        },
        "google|tokF": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3370,6 +3708,7 @@
       "chains": {
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3377,6 +3716,7 @@
        },
        "google|tokE": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3384,6 +3724,7 @@
        },
        "google|tokF": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3391,6 +3732,7 @@
        },
        "google|tokG": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "paused",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3411,6 +3753,7 @@
       "chains": {
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3418,6 +3761,7 @@
        },
        "google|tokE": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3425,6 +3769,7 @@
        },
        "google|tokF": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3432,6 +3777,7 @@
        },
        "google|tokG": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "paused",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3452,6 +3798,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -3459,6 +3806,7 @@
        },
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3466,6 +3814,7 @@
        },
        "google|tokE": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3473,6 +3822,7 @@
        },
        "google|tokF": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3480,6 +3830,7 @@
        },
        "google|tokG": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "paused",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3500,6 +3851,7 @@
       "chains": {
        "google|tokA": {
         "expires": "2026-02-01",
+        "refunded": [],
         "state": "active",
         "updated": "2026-01-01",
         "user": "u-7e3f",
@@ -3507,6 +3859,7 @@
        },
        "google|tokC": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "expired",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3514,6 +3867,7 @@
        },
        "google|tokE": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "active",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3521,6 +3875,7 @@
        },
        "google|tokF": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "grace",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3528,6 +3883,7 @@
        },
        "google|tokG": {
         "expires": "2026-04-20",
+        "refunded": [],
         "state": "paused",
         "updated": "2026-03-20",
         "user": "u-7e3f",
@@ -3538,6 +3894,259 @@
       "stamp": "IGNORED"
      },
      "send": "g18"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "renewal of a refunded transaction",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a15"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a9"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "DUPLICATE"
+     },
+     "send": "a15"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "renewals after a refund",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [],
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a27"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "refunded": [
+         "t-mar"
+        ],
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a28"
     }
    ]
   }

@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -49,6 +50,13 @@ func Run(t *testing.T, newStore func(t *testing.T) entitlements.Store) {
 		{"OtherFnErrorRollsBackAndIsRetryable", otherErrorRollsBack},
 		{"NilResultRecordsWithoutSaving", nilResultRecords},
 		{"FnMayRunMoreThanOnce", fnMayRunMoreThanOnce},
+		{"RefundOfOlderTransactionBeforeItsRenewal", refundOldBeforeRenewal},
+		{"RenewalBeforeRefundOfOlderTransaction", renewalBeforeRefundOld},
+		{"RefundOfLatestTransactionThenReversal", refundLatestThenReversal},
+		{"RefundedTransactionsRoundTripAndDuplicates", refundedTransactionsRoundTrip},
+		{"AutoRenewRoundTrip", autoRenewRoundTrip},
+		{"DeleteUser", deleteUser},
+		{"LinkUserThroughService", linkUser},
 		{"ListByUser", listByUser},
 		{"ListByUserEmptyMatchesNothing", listByUserEmpty},
 		{"ChainsAreIndependentAcrossSources", chainsIndependent},
@@ -530,4 +538,248 @@ func cancelledContext(t *testing.T, st entitlements.Store) {
 	}
 	// A cancelled Apply must not have consumed the event ID.
 	mustApply(t, st, e)
+}
+
+const (
+	tx1 = "tx-period-1"
+	tx2 = "tx-period-2"
+)
+
+var (
+	exp1 = t0.Add(30 * 24 * time.Hour)
+	exp2 = t0.Add(60 * 24 * time.Hour)
+)
+
+func period(id string, state entitlements.State, signed time.Time, tx string, exp time.Time) entitlements.Event {
+	e := event(id, state, signed)
+	e.TransactionID, e.ExpiresAt = tx, exp
+	return e
+}
+
+func wantChain(t *testing.T, st entitlements.Store, state entitlements.State, exp time.Time, version int64, refunded ...string) {
+	t.Helper()
+	got := mustGet(t, st, entitlements.SourceApple, "tx1")
+	if got.State != state || !got.ExpiresAt.Equal(exp) || got.Version != version || !slices.Equal(got.RefundedTransactions, refunded) {
+		t.Errorf("stored chain = state %s expires %v version %d refunded %v; want %s %v %d %v",
+			got.State, got.ExpiresAt, got.Version, got.RefundedTransactions, state, exp, version, refunded)
+	}
+}
+
+// The REFUND of period 1 is delivered before the renewal that replaced it and
+// is signed after it: the renewal must still apply.
+func refundOldBeforeRenewal(t *testing.T, st entitlements.Store) {
+	mustApply(t, st, period("sub", entitlements.StateActive, t0, tx1, exp1))
+	mustApply(t, st, period("refund-1", entitlements.StateRefunded, t0.Add(2*time.Hour), tx1, exp1))
+	wantChain(t, st, entitlements.StateRefunded, exp1, 2, tx1)
+
+	mustApply(t, st, period("renew-2", entitlements.StateActive, t0.Add(time.Hour), tx2, exp2))
+	wantChain(t, st, entitlements.StateActive, exp2, 3, tx1)
+
+	// redelivery of any of them changes nothing
+	for _, id := range []string{"sub", "refund-1", "renew-2"} {
+		_, err := apply(st, period(id, entitlements.StateActive, t0, tx1, exp1))
+		wantErr(t, err, entitlements.ErrDuplicate, id)
+	}
+	wantChain(t, st, entitlements.StateActive, exp2, 3, tx1)
+}
+
+func renewalBeforeRefundOld(t *testing.T, st entitlements.Store) {
+	mustApply(t, st, period("sub", entitlements.StateActive, t0, tx1, exp1))
+	mustApply(t, st, period("renew-2", entitlements.StateActive, t0.Add(time.Hour), tx2, exp2))
+	mustApply(t, st, period("refund-1", entitlements.StateRefunded, t0.Add(2*time.Hour), tx1, exp1))
+	wantChain(t, st, entitlements.StateActive, exp2, 3, tx1)
+}
+
+func refundLatestThenReversal(t *testing.T, st entitlements.Store) {
+	mustApply(t, st, period("sub", entitlements.StateActive, t0, tx1, exp1))
+	mustApply(t, st, period("renew-2", entitlements.StateActive, t0.Add(time.Hour), tx2, exp2))
+	mustApply(t, st, period("refund-2", entitlements.StateRefunded, t0.Add(2*time.Hour), tx2, exp2))
+	wantChain(t, st, entitlements.StateRefunded, exp2, 3, tx2)
+
+	// a late renewal event of the refunded period is refused
+	_, err := apply(st, period("renew-2-late", entitlements.StateActive, t0.Add(3*time.Hour), tx2, exp2))
+	wantErr(t, err, entitlements.ErrStale, "renewal of the refunded transaction")
+	wantChain(t, st, entitlements.StateRefunded, exp2, 3, tx2)
+
+	reversal := period("reversed", entitlements.StateActive, t0.Add(4*time.Hour), tx2, exp2)
+	reversal.Restores = true
+	mustApply(t, st, reversal)
+	wantChain(t, st, entitlements.StateActive, exp2, 4)
+}
+
+func refundedTransactionsRoundTrip(t *testing.T, st entitlements.Store) {
+	mustApply(t, st, period("sub", entitlements.StateActive, t0, tx1, exp1))
+	got := mustApply(t, st, period("refund-a", entitlements.StateRefunded, t0.Add(time.Hour), "tx-a", exp1.Add(-24*time.Hour)))
+	if !slices.Equal(got.RefundedTransactions, []string{"tx-a"}) {
+		t.Errorf("Apply returned RefundedTransactions %v", got.RefundedTransactions)
+	}
+	// the stored copy must not alias what Apply returned
+	got.RefundedTransactions[0] = "tampered"
+	wantChain(t, st, entitlements.StateActive, exp1, 2, "tx-a")
+	mustApply(t, st, period("refund-b", entitlements.StateRefunded, t0.Add(2*time.Hour), "tx-b", exp1.Add(-48*time.Hour)))
+	wantChain(t, st, entitlements.StateActive, exp1, 3, "tx-a", "tx-b")
+	// the same transaction refunded twice is listed once
+	mustApply(t, st, period("refund-b2", entitlements.StateRefunded, t0.Add(3*time.Hour), "tx-b", exp1.Add(-48*time.Hour)))
+	wantChain(t, st, entitlements.StateActive, exp1, 4, "tx-a", "tx-b")
+}
+
+func autoRenewRoundTrip(t *testing.T, st entitlements.Store) {
+	yes, no := true, false
+	mustApply(t, st, event("e1", entitlements.StateActive, t0))
+	if got := mustGet(t, st, entitlements.SourceApple, "tx1"); got.AutoRenew != nil {
+		t.Errorf("AutoRenew = %v, want nil (never reported)", *got.AutoRenew)
+	}
+	e := event("e2", entitlements.StateActive, t0.Add(time.Minute))
+	e.AutoRenew = &yes
+	mustApply(t, st, e)
+	if got := mustGet(t, st, entitlements.SourceApple, "tx1"); got.AutoRenew == nil || !*got.AutoRenew {
+		t.Errorf("AutoRenew = %v, want true", got.AutoRenew)
+	}
+	e = event("e3", entitlements.StateActive, t0.Add(2*time.Minute))
+	e.AutoRenew = &no
+	mustApply(t, st, e)
+	if got := mustGet(t, st, entitlements.SourceApple, "tx1"); got.AutoRenew == nil || *got.AutoRenew {
+		t.Errorf("AutoRenew = %v, want false", got.AutoRenew)
+	}
+	mustApply(t, st, event("e4", entitlements.StateActive, t0.Add(3*time.Minute))) // says nothing
+	if got := mustGet(t, st, entitlements.SourceApple, "tx1"); got.AutoRenew == nil || *got.AutoRenew {
+		t.Errorf("an event without AutoRenew changed it to %v", got.AutoRenew)
+	}
+	// the stored value does not alias the returned one
+	got := mustGet(t, st, entitlements.SourceApple, "tx1")
+	*got.AutoRenew = true
+	if again := mustGet(t, st, entitlements.SourceApple, "tx1"); *again.AutoRenew {
+		t.Error("mutating a returned entitlement changed the stored one")
+	}
+}
+
+func deleteUser(t *testing.T, st entitlements.Store) {
+	ctx := context.Background()
+	chains := []struct {
+		src  entitlements.Source
+		tx   string
+		user string
+	}{
+		{entitlements.SourceApple, "a1", "u1"}, {entitlements.SourceGoogle, "g1", "u1"},
+		{entitlements.SourceApple, "b1", "u2"}, {entitlements.SourceApple, "n1", ""},
+	}
+	for i, c := range chains {
+		e := event(fmt.Sprint("e", i), entitlements.StateActive, t0)
+		e.Source, e.OriginalTxID, e.UserID = c.src, c.tx, c.user
+		mustApply(t, st, e)
+	}
+	n, err := st.DeleteUser(ctx, "u1")
+	if err != nil || n != 2 {
+		t.Fatalf("DeleteUser(u1) = %d, %v; want 2, nil", n, err)
+	}
+	for _, c := range chains[:2] {
+		_, err := st.Get(ctx, c.src, c.tx)
+		wantErr(t, err, entitlements.ErrNotFound, "deleted chain "+c.tx)
+	}
+	if list, err := st.ListByUser(ctx, "u1"); err != nil || len(list) != 0 {
+		t.Errorf("ListByUser(u1) = %v, %v", list, err)
+	}
+	mustGet(t, st, entitlements.SourceApple, "b1")
+	mustGet(t, st, entitlements.SourceApple, "n1")
+
+	// processed event IDs stay: a redelivery is a duplicate and cannot recreate the chain
+	first := event("e0", entitlements.StateActive, t0)
+	first.OriginalTxID, first.UserID = "a1", "u1"
+	_, err = apply(st, first)
+	wantErr(t, err, entitlements.ErrDuplicate, "redelivery after DeleteUser")
+
+	if n, err = st.DeleteUser(ctx, "u1"); err != nil || n != 0 {
+		t.Errorf("second DeleteUser = %d, %v; want 0, nil", n, err)
+	}
+	if n, err = st.DeleteUser(ctx, ""); err != nil || n != 0 {
+		t.Errorf("DeleteUser(\"\") = %d, %v; want 0, nil", n, err)
+	}
+	mustGet(t, st, entitlements.SourceApple, "n1") // the unattributed chain survived the empty id
+}
+
+// LinkUser relies on Apply being atomic and on rolling back a failing callback.
+func linkUser(t *testing.T, st entitlements.Store) {
+	ctx := context.Background()
+	svc := entitlements.NewService(st, entitlements.WithTimeFn(func() time.Time { return t0 }))
+	e := event("e1", entitlements.StateActive, t0)
+	e.UserID = ""
+	if _, err := svc.Process(ctx, e); err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.LinkUser(ctx, entitlements.SourceApple, "tx1", "u5")
+	if err != nil || got.UserID != "u5" || got.Version != 2 {
+		t.Fatalf("LinkUser = %+v, %v", got, err)
+	}
+	if stored := mustGet(t, st, entitlements.SourceApple, "tx1"); stored.UserID != "u5" || stored.Version != 2 {
+		t.Errorf("stored after link = %+v", stored)
+	}
+	if again, err := svc.LinkUser(ctx, entitlements.SourceApple, "tx1", "u5"); err != nil || again.Version != 2 {
+		t.Errorf("repeated link = %+v, %v; want no change", again, err)
+	}
+	_, err = svc.LinkUser(ctx, entitlements.SourceApple, "tx1", "intruder")
+	wantErr(t, err, entitlements.ErrUserConflict, "linking another user")
+	_, err = svc.LinkUser(ctx, entitlements.SourceApple, "missing", "u5")
+	wantErr(t, err, entitlements.ErrNotFound, "unknown chain")
+	if list, err := st.ListByUser(ctx, "u5"); err != nil || len(list) != 1 {
+		t.Errorf("ListByUser(u5) = %d rows, %v", len(list), err)
+	}
+	if stored := mustGet(t, st, entitlements.SourceApple, "tx1"); stored.UserID != "u5" || stored.Version != 2 {
+		t.Errorf("failed links changed the chain: %+v", stored)
+	}
+
+	// Concurrent links of two users to unowned chains: Apply is atomic, so on
+	// every chain exactly one user wins and every attempt by the other conflicts.
+	const chains, perChain = 6, 16
+	for c := range chains {
+		e := event(fmt.Sprint("race-", c), entitlements.StateActive, t0)
+		e.OriginalTxID, e.UserID = fmt.Sprint("tx-race-", c), ""
+		if _, err := svc.Process(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	results := make([][]error, chains)
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for c := range chains {
+		results[c] = make([]error, perChain)
+		for i := range perChain {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				_, results[c][i] = svc.LinkUser(ctx, entitlements.SourceApple, fmt.Sprint("tx-race-", c), []string{"ua", "ub"}[i%2])
+			}()
+		}
+	}
+	close(start)
+	wg.Wait()
+	for c := range chains {
+		conflicts := 0
+		for _, err := range results[c] {
+			switch {
+			case err == nil:
+			case errors.Is(err, entitlements.ErrUserConflict):
+				conflicts++
+			default:
+				t.Errorf("unexpected link error: %v", err)
+			}
+		}
+		if conflicts != perChain/2 {
+			t.Errorf("chain %d: %d conflicts, want %d: two users must not both own it", c, conflicts, perChain/2)
+		}
+		if raced := mustGet(t, st, entitlements.SourceApple, fmt.Sprint("tx-race-", c)); raced.Version != 2 {
+			t.Errorf("chain %d: version %d, want 2 (linked once)", c, raced.Version)
+		}
+	}
+
+	// a later event without a user, and one naming another user, keep the owner
+	nu := event("e2", entitlements.StateGrace, t0.Add(time.Minute))
+	nu.UserID = ""
+	mustApply(t, st, nu)
+	other := event("e3", entitlements.StateActive, t0.Add(2*time.Minute))
+	other.UserID = "someone-else"
+	mustApply(t, st, other)
+	if stored := mustGet(t, st, entitlements.SourceApple, "tx1"); stored.UserID != "u5" {
+		t.Errorf("owner = %q, want u5", stored.UserID)
+	}
 }

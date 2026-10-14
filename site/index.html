@@ -327,8 +327,8 @@
       <path class="ln bad dash" d="M468 252 H356"/><path class="ln bad thick" d="M344 242 L328 262 M328 242 L344 262"/>
       <text class="s b tbad" x="385" y="232" text-anchor="middle">Expired, retry, grace,</text><text class="s b tbad" x="385" y="276" text-anchor="middle">pause, auto-renew</text>
 
-      <text class="s" x="10" y="314">Moving back always needs an event strictly newer than the refund. Refunded and revoked can swap with each other.</text>
-      <text class="s" x="10" y="338">A refund of an older renewal, while a newer one still runs, is ignored as stale (Apple).</text>
+      <text class="s" x="10" y="314">Moving back needs an event newer than the refund, or a renewal of a different transaction that outlasts it.</text>
+      <text class="s" x="10" y="338">A refund of an older renewal while a newer one runs is recorded against that renewal and does not end the chain (Apple).</text>
       <text class="s m" x="10" y="368">Source: statemachine.go (Apply) and the state mapping in apple/mapper.go and google/parser.go.</text>
     </svg>
     </div>
@@ -356,38 +356,44 @@
 
 <section id="ordering" aria-labelledby="h-order">
   <h2 id="h-order">Duplicates and late messages</h2>
-  <p class="prose">Every event passes the same four questions, in this order. The first two are what make redelivery safe.</p>
+  <p class="prose">Every event passes the same five questions, in this order. The first two are what make redelivery safe.</p>
   <figure class="dia">
     <div class="scroll">
-    <svg viewBox="0 0 720 500" role="img" aria-labelledby="d6t d6d">
+    <svg viewBox="0 0 720 590" role="img" aria-labelledby="d6t d6d">
       <title id="d6t">Questions every event is asked</title>
-      <desc id="d6d">One: was this event ID seen before? Then it is a duplicate. Two: is it older than the stored update time? Then it is stale. Three: for Apple, is it a refund of an older transaction than the chain runs to? Then it is stale. Four: is the chain refunded or revoked and the event not allowed to lift that? Then it is stale. Otherwise the state is written and the version goes up by one.</desc>
+      <desc id="d6d">One: was this event ID seen before? Then it is a duplicate. Two: is it older than the stored update time, unless it is a renewal of a new transaction after a refund? Then it is stale. Three: is it about a transaction that was already refunded, and not a refund or a reversal? Then it is stale. Four: for Apple, is it a refund of an older transaction than the chain runs to? Then the refund is recorded and the chain keeps its state. Five: is the chain refunded or revoked and the event not allowed to lift that? Then it is stale. Otherwise the state is written and the version goes up by one.</desc>
       <rect class="box" x="10" y="10" width="360" height="62" rx="4"/><text class="b" x="24" y="36">1 Seen this event ID before?</text><text class="s m" x="24" y="57">Per store: Apple notification ID, Pub/Sub message ID</text>
       <rect class="box dup fdup" x="440" y="14" width="270" height="54" rx="4"/><text class="b" x="454" y="38">Duplicate</text><text class="s m" x="454" y="57">Nothing changes. HTTP 200.</text>
       <path class="ln" d="M370 41 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="34" text-anchor="middle">yes</text>
 
       <path class="ln" d="M190 72 V108" marker-end="url(#ar)"/><text class="s b" x="202" y="95">no</text>
-      <rect class="box" x="10" y="110" width="360" height="62" rx="4"/><text class="b" x="24" y="136">2 Older than the stored update time?</text><text class="s m" x="24" y="157">Equal time counts as newer (ties happen)</text>
-      <rect class="box warn fwarn" x="440" y="114" width="270" height="54" rx="4"/><text class="b" x="454" y="138">Stale</text><text class="s m" x="454" y="157">ID recorded, state kept. HTTP 200.</text>
-      <path class="ln" d="M370 141 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="134" text-anchor="middle">yes</text>
+      <rect class="box" x="10" y="110" width="360" height="82" rx="4"/><text class="b" x="24" y="136">2 Older than the stored update time?</text><text class="s m" x="24" y="156">Equal time counts as newer, because ties happen.</text><text class="s m" x="24" y="174">Exempt: a renewal of a new transaction after a refund.</text>
+      <rect class="box warn fwarn" x="440" y="124" width="270" height="54" rx="4"/><text class="b" x="454" y="148">Stale</text><text class="s m" x="454" y="167">ID recorded, state kept. HTTP 200.</text>
+      <path class="ln" d="M370 151 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="144" text-anchor="middle">yes</text>
 
-      <path class="ln" d="M190 172 V208" marker-end="url(#ar)"/><text class="s b" x="202" y="195">no</text>
-      <rect class="box" x="10" y="210" width="360" height="72" rx="4"/><text class="b" x="24" y="236">3 Apple refund of an older transaction?</text><text class="s m" x="24" y="256">Its expiry is before the chain&rsquo;s. A newer renewal</text><text class="s m" x="24" y="272">is still paid, so the refund does not end the chain.</text>
-      <rect class="box warn fwarn" x="440" y="218" width="270" height="54" rx="4"/><text class="b" x="454" y="242">Stale</text><text class="s m" x="454" y="261">A newer transaction still runs.</text>
-      <path class="ln" d="M370 246 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="239" text-anchor="middle">yes</text>
+      <path class="ln" d="M190 192 V218" marker-end="url(#ar)"/><text class="s b" x="202" y="211">no</text>
+      <rect class="box" x="10" y="220" width="360" height="72" rx="4"/><text class="b" x="24" y="246">3 About a transaction already refunded?</text><text class="s m" x="24" y="266">And it is not a refund or a reversal, so it is a late</text><text class="s m" x="24" y="282">renewal or bookkeeping message for that same period.</text>
+      <rect class="box warn fwarn" x="440" y="229" width="270" height="54" rx="4"/><text class="b" x="454" y="253">Stale</text><text class="s m" x="454" y="272">That transaction stays refunded.</text>
+      <path class="ln" d="M370 256 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="249" text-anchor="middle">yes</text>
 
-      <path class="ln" d="M190 282 V318" marker-end="url(#ar)"/><text class="s b" x="202" y="305">no</text>
-      <rect class="box" x="10" y="320" width="360" height="72" rx="4"/><text class="b" x="24" y="346">4 Chain refunded or revoked?</text><text class="s m" x="24" y="366">And the event is not a new purchase, a renewal or a</text><text class="s m" x="24" y="382">refund reversal that is strictly newer?</text>
-      <rect class="box warn fwarn" x="440" y="328" width="270" height="54" rx="4"/><text class="b" x="454" y="352">Stale</text><text class="s m" x="454" y="371">The chain stays closed.</text>
+      <path class="ln" d="M190 292 V318" marker-end="url(#ar)"/><text class="s b" x="202" y="311">no</text>
+      <rect class="box" x="10" y="320" width="360" height="72" rx="4"/><text class="b" x="24" y="346">4 Apple refund of an older transaction?</text><text class="s m" x="24" y="366">Its expiry is before the chain&rsquo;s, so a newer renewal</text><text class="s m" x="24" y="382">is still paid and keeps access.</text>
+      <rect class="box ok fok" x="440" y="320" width="270" height="72" rx="4"/><text class="b" x="454" y="344">Recorded, access stays</text><text class="s m" x="454" y="364">The refund is noted against that</text><text class="s m" x="454" y="380">transaction. Version + 1.</text>
       <path class="ln" d="M370 356 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="349" text-anchor="middle">yes</text>
 
-      <path class="ln ok" d="M190 392 V428" marker-end="url(#ar-ok)"/><text class="s b tok" x="202" y="415">no</text>
-      <rect class="box ok fok" x="10" y="430" width="360" height="56" rx="4" style="stroke-width:2.4"/><text class="b" x="24" y="454">Apply</text><text class="s m" x="24" y="474">Write state and event ID together. Version + 1.</text>
+      <path class="ln" d="M190 392 V418" marker-end="url(#ar)"/><text class="s b" x="202" y="411">no</text>
+      <rect class="box" x="10" y="420" width="360" height="72" rx="4"/><text class="b" x="24" y="446">5 Chain refunded or revoked?</text><text class="s m" x="24" y="466">And the event is not a new purchase, a renewal or a</text><text class="s m" x="24" y="482">refund reversal that is allowed to lift it?</text>
+      <rect class="box warn fwarn" x="440" y="429" width="270" height="54" rx="4"/><text class="b" x="454" y="453">Stale</text><text class="s m" x="454" y="472">The chain stays closed.</text>
+      <path class="ln" d="M370 456 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="449" text-anchor="middle">yes</text>
+
+      <path class="ln ok" d="M190 492 V518" marker-end="url(#ar-ok)"/><text class="s b tok" x="202" y="511">no</text>
+      <rect class="box ok fok" x="10" y="520" width="360" height="56" rx="4" style="stroke-width:2.4"/><text class="b" x="24" y="544">Apply</text><text class="s m" x="24" y="564">Write state and event ID together. Version + 1.</text>
     </svg>
     </div>
     <figcaption>Stale events are recorded as processed too, so a redelivery of a stale event is a plain duplicate next time.</figcaption>
   </figure>
   <p class="prose">The ordering key is the time the store signed the message (<code>signedDate</code> on Apple, <code>eventTimeMillis</code> on Google), not the time it arrived. Google events dated more than five minutes ahead of the server clock are rejected, because a forged far-future time would make every genuine later event look old.</p>
+  <p class="prose">A refund names one billing period, not the whole subscription. Apple&rsquo;s transaction ID says which. The library keeps a short list of the refunded transactions on each chain. Refunding an old renewal while a newer one is paid leaves access alone. Refunding the latest one ends the chain, and a renewal of a different, later-running transaction can still bring it back even if its message arrives after the refund and was signed before it. A late message about the refunded period itself cannot.</p>
   <p class="prose">The duplicate check and the state change happen in one transaction. Two copies of one message arriving at the same moment cannot both apply.</p>
 </section>
 
@@ -603,8 +609,7 @@ http.Handle("/webhooks/google", handler)</code></pre>
   <h2 id="h-lim">What it does not do yet</h2>
   <ul class="plain">
     <li><b>Version 0.</b> The API may change between minor versions until v1.</li>
-    <li><b>Apple, refund order.</b> If a refund for an older transaction arrives before the renewal that replaced it, the chain is refunded and the later renewal is dropped as stale. Fixing this needs per-transaction tracking.</li>
-    <li><b>Google, acknowledgement.</b> The library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.</li>
+        <li><b>Google, acknowledgement.</b> The library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.</li>
     <li><b>Google, add-ons.</b> One product is stored per purchase token: the line item with the latest expiry.</li>
     <li><b>Out of scope.</b> Legacy <code>verifyReceipt</code>, Stripe and other web payment providers, consumables, and an App Store Server API client.</li>
     <li><b>Missing user ID.</b> A notification with no account token is still applied, keyed by transaction, with an empty user. <code>ListByUser("")</code> returns nothing, so attribute these yourself.</li>

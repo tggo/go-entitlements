@@ -19,7 +19,7 @@ func TestProcessorReturningNilNil(t *testing.T) {
 	t.Parallel()
 	ev := entitlements.Event{ID: "m1", Source: entitlements.SourceGoogle, OriginalTxID: "tok", State: entitlements.StateActive}
 	parser := mocks.NewMockGoogleParser(t)
-	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(ev, nil)
+	parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(ev), nil)
 	svc := mocks.NewMockProcessor(t)
 	svc.EXPECT().Process(mock.Anything, ev).Return(nil, nil)
 	h := mustGoogle(t, parser, svc, testLogger(t))
@@ -32,7 +32,7 @@ func TestInvalidEventIsAcknowledgedLoudly(t *testing.T) {
 	ev := entitlements.Event{ID: "m1", Source: entitlements.SourceGoogle}
 	log, logs := newRecorder()
 	parser := mocks.NewMockGoogleParser(t)
-	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(ev, nil)
+	parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(ev), nil)
 	svc := mocks.NewMockProcessor(t)
 	svc.EXPECT().Process(mock.Anything, ev).Return(nil, fmt.Errorf("w: %w", entitlements.ErrInvalidEvent))
 	h := mustGoogle(t, parser, svc, log)
@@ -50,7 +50,7 @@ func TestNoExpiryIsLoud(t *testing.T) {
 	t.Parallel()
 	log, logs := newRecorder()
 	parser := mocks.NewMockGoogleParser(t)
-	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(entitlements.Event{}, fmt.Errorf("w: %w", google.ErrNoExpiry))
+	parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(entitlements.Event{}), fmt.Errorf("w: %w", google.ErrNoExpiry))
 	h := mustGoogle(t, parser, mocks.NewMockProcessor(t), log)
 
 	assert.Equal(t, http.StatusOK, post(h, "body").Code)
@@ -65,7 +65,7 @@ func TestNoExpiryIsLoud(t *testing.T) {
 func TestNilLoggerAndNilOptionAreSafe(t *testing.T) {
 	t.Parallel()
 	parser := mocks.NewMockGoogleParser(t)
-	parser.EXPECT().Parse(mock.Anything, mock.Anything).Return(entitlements.Event{}, errors.New("boom"))
+	parser.EXPECT().ParseResult(mock.Anything, mock.Anything).Return(gres(entitlements.Event{}), errors.New("boom"))
 	h := mustGoogle(t, parser, mocks.NewMockProcessor(t), nil)
 
 	assert.Equal(t, http.StatusInternalServerError, post(h, "body").Code)

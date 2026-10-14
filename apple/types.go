@@ -73,7 +73,7 @@ type JWSRenewalInfoDecodedPayload struct {
 	OriginalTransactionID       string `json:"originalTransactionId,omitempty"`
 	AutoRenewProductID          string `json:"autoRenewProductId,omitempty"`
 	ProductID                   string `json:"productId,omitempty"`
-	AutoRenewStatus             int    `json:"autoRenewStatus,omitempty"` // 0 off, 1 on
+	AutoRenewStatus             *int   `json:"autoRenewStatus,omitempty"` // 0 off, 1 on; nil when absent
 	ExpirationIntent            int    `json:"expirationIntent,omitempty"`
 	GracePeriodExpiresDate      int64  `json:"gracePeriodExpiresDate,omitempty"`
 	IsInBillingRetryPeriod      bool   `json:"isInBillingRetryPeriod,omitempty"`

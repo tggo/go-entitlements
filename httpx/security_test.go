@@ -60,7 +60,7 @@ func TestInvalidPurchaseTokenIsAcknowledgedLoudly(t *testing.T) {
 	t.Parallel()
 	log, logs := newRecorder()
 	parser := mocks.NewMockGoogleParser(t)
-	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(entitlements.Event{}, fmt.Errorf("w: %w", google.ErrPurchaseInvalid))
+	parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(entitlements.Event{}), fmt.Errorf("w: %w", google.ErrPurchaseInvalid))
 	h := mustGoogle(t, parser, mocks.NewMockProcessor(t), log)
 
 	assert.Equal(t, http.StatusOK, post(h, "body").Code)
@@ -95,7 +95,7 @@ func TestOneRecordPerRequest(t *testing.T) {
 			t.Parallel()
 			log, logs := newRecorder()
 			parser := mocks.NewMockGoogleParser(t)
-			parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(ev, tc.parseErr)
+			parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(ev), tc.parseErr)
 			svc := mocks.NewMockProcessor(t)
 			if tc.process {
 				svc.EXPECT().Process(mock.Anything, ev).Return(&entitlements.Entitlement{State: entitlements.StateActive}, tc.procErr)

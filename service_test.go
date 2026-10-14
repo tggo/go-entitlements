@@ -20,9 +20,15 @@ import (
 
 func newSvc(t *testing.T, st entitlements.Store) *entitlements.Service {
 	t.Helper()
-	return entitlements.NewService(st,
+	return newSvcWith(t, st)
+}
+
+func newSvcWith(t *testing.T, st entitlements.Store, opts ...entitlements.Option) *entitlements.Service {
+	t.Helper()
+	return entitlements.NewService(st, append([]entitlements.Option{
 		entitlements.WithLogger(testutil.NewLogger(t)),
-		entitlements.WithTimeFn(func() time.Time { return t0.Add(time.Hour) }))
+		entitlements.WithTimeFn(func() time.Time { return t0.Add(time.Hour) }),
+	}, opts...)...)
 }
 
 func TestService_Process_AppliesFn(t *testing.T) {

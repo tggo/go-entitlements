@@ -148,6 +148,16 @@ type LineItem struct {
 	// charge of this item. A voidedPurchaseNotification for any other order
 	// does not end the chain.
 	LatestSuccessfulOrderID string `json:"latestSuccessfulOrderId,omitempty"`
+	// AutoRenewingPlan is nil for a prepaid plan (or when Google omits it):
+	// then the auto-renew setting is unknown, not false.
+	AutoRenewingPlan *AutoRenewingPlan `json:"autoRenewingPlan,omitempty"`
+}
+
+// AutoRenewingPlan is the renewal setting of an auto-renewing line item.
+type AutoRenewingPlan struct {
+	// AutoRenewEnabled is whether the item will renew; false after the user
+	// cancels (state CANCELED) while access continues until expiryTime.
+	AutoRenewEnabled bool `json:"autoRenewEnabled"`
 }
 
 // ExternalAccountIdentifiers carries the developer-supplied account id.

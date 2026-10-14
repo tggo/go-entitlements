@@ -124,7 +124,7 @@ func TestApply_UpdateKeepsAndReplacesFields(t *testing.T) {
 	e.ID, e.OccurredAt = "e2", t0.Add(2*time.Minute)
 	got, err = entitlements.Apply(got, e)
 	require.NoError(t, err)
-	assert.Equal(t, "u2", got.UserID)
+	assert.Equal(t, "u1", got.UserID, "the first owner stays, a different user in a later event does not take over")
 	assert.Equal(t, "pro2", got.ProductID)
 	assert.True(t, got.ExpiresAt.Equal(t0.Add(2*time.Hour)))
 	assert.Equal(t, entitlements.EnvironmentSandbox, got.Environment)
@@ -249,4 +249,37 @@ func TestService_IsActive_SandboxRowDoesNotShadowProduction(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list, 2)
 	assert.Equal(t, "a-sandbox", list[0].OriginalTxID)
+}
+
+func TestApply_AutoRenew(t *testing.T) {
+	yes, no := true, false
+	cur := chain(entitlements.SourceApple, entitlements.StateActive, t0, t0.Add(time.Hour))
+	e := entitlements.Event{ID: "e", Source: entitlements.SourceApple, OriginalTxID: "tx1", State: entitlements.StateActive, OccurredAt: t0.Add(time.Minute)}
+
+	got, err := entitlements.Apply(cur, e)
+	require.NoError(t, err)
+	assert.Nil(t, got.AutoRenew, "unknown stays unknown")
+
+	e.AutoRenew = &yes
+	got, err = entitlements.Apply(cur, e)
+	require.NoError(t, err)
+	require.NotNil(t, got.AutoRenew)
+	assert.True(t, *got.AutoRenew)
+	yes = false // the stored value must not alias the event's pointer
+	assert.True(t, *got.AutoRenew)
+
+	e.AutoRenew, e.ID, e.OccurredAt = &no, "e2", t0.Add(2*time.Minute)
+	got, err = entitlements.Apply(got, e)
+	require.NoError(t, err)
+	assert.False(t, *got.AutoRenew)
+
+	e.AutoRenew, e.ID, e.OccurredAt = nil, "e3", t0.Add(3*time.Minute)
+	got, err = entitlements.Apply(got, e)
+	require.NoError(t, err)
+	require.NotNil(t, got.AutoRenew, "an event that does not say keeps the last known value")
+	assert.False(t, *got.AutoRenew)
+
+	created, err := entitlements.Apply(nil, entitlements.Event{ID: "n", Source: entitlements.SourceApple, OriginalTxID: "t", State: entitlements.StateActive, AutoRenew: &no})
+	require.NoError(t, err)
+	assert.False(t, *created.AutoRenew)
 }

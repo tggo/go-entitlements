@@ -48,7 +48,7 @@ func TestGoogleHandler_ParseErrorStatusTable(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			parser := mocks.NewMockGoogleParser(t)
-			parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(entitlements.Event{}, tc.err)
+			parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(entitlements.Event{}), tc.err)
 			h := mustGoogle(t, parser, mocks.NewMockProcessor(t), testLogger(t))
 			assert.Equal(t, tc.code, post(h, "body").Code)
 		})
@@ -75,7 +75,7 @@ func TestGoogleHandler_ProcessErrorStatusTable(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			parser := mocks.NewMockGoogleParser(t)
-			parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(ev, nil)
+			parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(ev), nil)
 			svc := mocks.NewMockProcessor(t)
 			svc.EXPECT().Process(mock.Anything, ev).Return(&entitlements.Entitlement{State: entitlements.StateActive}, tc.err)
 			h := mustGoogle(t, parser, svc, testLogger(t))
@@ -138,7 +138,7 @@ func TestDefaultMaxBodyBoundary(t *testing.T) {
 	t.Run("google", func(t *testing.T) {
 		t.Parallel()
 		parser := mocks.NewMockGoogleParser(t)
-		parser.EXPECT().Parse(mock.Anything, []byte(atLimit)).Return(entitlements.Event{}, entitlements.ErrIgnored).Once()
+		parser.EXPECT().ParseResult(mock.Anything, []byte(atLimit)).Return(gres(entitlements.Event{}), entitlements.ErrIgnored).Once()
 		h := mustGoogle(t, parser, mocks.NewMockProcessor(t), testLogger(t))
 		assert.Equal(t, http.StatusOK, post(h, atLimit).Code)
 		assert.Equal(t, http.StatusRequestEntityTooLarge, post(h, overLimit).Code)

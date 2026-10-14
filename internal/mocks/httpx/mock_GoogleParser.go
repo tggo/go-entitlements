@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	entitlements "github.com/tggo/go-entitlements"
+	google "github.com/tggo/go-entitlements/google"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -23,23 +23,23 @@ func (_m *MockGoogleParser) EXPECT() *MockGoogleParser_Expecter {
 	return &MockGoogleParser_Expecter{mock: &_m.Mock}
 }
 
-// Parse provides a mock function with given fields: ctx, body
-func (_m *MockGoogleParser) Parse(ctx context.Context, body []byte) (entitlements.Event, error) {
+// ParseResult provides a mock function with given fields: ctx, body
+func (_m *MockGoogleParser) ParseResult(ctx context.Context, body []byte) (google.Result, error) {
 	ret := _m.Called(ctx, body)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Parse")
+		panic("no return value specified for ParseResult")
 	}
 
-	var r0 entitlements.Event
+	var r0 google.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []byte) (entitlements.Event, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) (google.Result, error)); ok {
 		return rf(ctx, body)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []byte) entitlements.Event); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) google.Result); ok {
 		r0 = rf(ctx, body)
 	} else {
-		r0 = ret.Get(0).(entitlements.Event)
+		r0 = ret.Get(0).(google.Result)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
@@ -51,31 +51,31 @@ func (_m *MockGoogleParser) Parse(ctx context.Context, body []byte) (entitlement
 	return r0, r1
 }
 
-// MockGoogleParser_Parse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Parse'
-type MockGoogleParser_Parse_Call struct {
+// MockGoogleParser_ParseResult_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ParseResult'
+type MockGoogleParser_ParseResult_Call struct {
 	*mock.Call
 }
 
-// Parse is a helper method to define mock.On call
+// ParseResult is a helper method to define mock.On call
 //   - ctx context.Context
 //   - body []byte
-func (_e *MockGoogleParser_Expecter) Parse(ctx interface{}, body interface{}) *MockGoogleParser_Parse_Call {
-	return &MockGoogleParser_Parse_Call{Call: _e.mock.On("Parse", ctx, body)}
+func (_e *MockGoogleParser_Expecter) ParseResult(ctx interface{}, body interface{}) *MockGoogleParser_ParseResult_Call {
+	return &MockGoogleParser_ParseResult_Call{Call: _e.mock.On("ParseResult", ctx, body)}
 }
 
-func (_c *MockGoogleParser_Parse_Call) Run(run func(ctx context.Context, body []byte)) *MockGoogleParser_Parse_Call {
+func (_c *MockGoogleParser_ParseResult_Call) Run(run func(ctx context.Context, body []byte)) *MockGoogleParser_ParseResult_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].([]byte))
 	})
 	return _c
 }
 
-func (_c *MockGoogleParser_Parse_Call) Return(_a0 entitlements.Event, _a1 error) *MockGoogleParser_Parse_Call {
+func (_c *MockGoogleParser_ParseResult_Call) Return(_a0 google.Result, _a1 error) *MockGoogleParser_ParseResult_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockGoogleParser_Parse_Call) RunAndReturn(run func(context.Context, []byte) (entitlements.Event, error)) *MockGoogleParser_Parse_Call {
+func (_c *MockGoogleParser_ParseResult_Call) RunAndReturn(run func(context.Context, []byte) (google.Result, error)) *MockGoogleParser_ParseResult_Call {
 	_c.Call.Return(run)
 	return _c
 }

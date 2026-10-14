@@ -1,0 +1,32 @@
+{
+  "status": 4,
+  "transaction": {
+    "transactionId": "2000000000000002",
+    "originalTransactionId": "2000000000000001",
+    "bundleId": "com.example.app",
+    "productId": "com.example.app.monthly",
+    "subscriptionGroupIdentifier": "21000000",
+    "purchaseDate": 1788998400000,
+    "originalPurchaseDate": 1786320000000,
+    "expiresDate": 1791417600000,
+    "quantity": 1,
+    "type": "Auto-Renewable Subscription",
+    "appAccountToken": "7e3fb20b-4cdb-47cc-936d-99d65f608138",
+    "inAppOwnershipType": "PURCHASED",
+    "signedDate": 1791633600000,
+    "environment": "Sandbox",
+    "transactionReason": "RENEWAL",
+    "storefront": "USA",
+    "storefrontId": "143441"
+  },
+  "renewal": {
+    "originalTransactionId": "2000000000000001",
+    "autoRenewProductId": "com.example.app.monthly",
+    "productId": "com.example.app.monthly",
+    "autoRenewStatus": 1,
+    "signedDate": 1791633600000,
+    "environment": "Sandbox",
+    "isInBillingRetryPeriod": true,
+    "gracePeriodExpiresDate": 1791849600000
+  }
+}

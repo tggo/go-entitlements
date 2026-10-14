@@ -261,3 +261,31 @@ func TestMapper_ReviveFlagsPerType(t *testing.T) {
 		assert.Equal(t, tc.restores, ev.Restores, tc.typ+" Restores")
 	}
 }
+
+func TestMapper_AutoRenew(t *testing.T) {
+	exp := pT0.Add(24 * time.Hour).UnixMilli()
+	one, zero := 1, 0
+	tests := []struct {
+		name string
+		typ  string
+		sub  string
+		ren  *apple.JWSRenewalInfoDecodedPayload
+		want *bool
+	}{
+		{"renewal info on", "DID_RENEW", "", &apple.JWSRenewalInfoDecodedPayload{AutoRenewStatus: &one}, ptr(true)},
+		{"renewal info off", "DID_RENEW", "", &apple.JWSRenewalInfoDecodedPayload{AutoRenewStatus: &zero}, ptr(false)},
+		{"renewal info without the field", "DID_RENEW", "", &apple.JWSRenewalInfoDecodedPayload{}, nil},
+		{"no renewal info", "DID_RENEW", "", nil, nil},
+		{"subtype enabled", "DID_CHANGE_RENEWAL_STATUS", "AUTO_RENEW_ENABLED", nil, ptr(true)},
+		{"subtype disabled", "DID_CHANGE_RENEWAL_STATUS", "AUTO_RENEW_DISABLED", nil, ptr(false)},
+		{"renewal info wins over the subtype", "DID_CHANGE_RENEWAL_STATUS", "AUTO_RENEW_DISABLED", &apple.JWSRenewalInfoDecodedPayload{AutoRenewStatus: &one}, ptr(true)},
+		{"subtype of another type is not a setting", "DID_RENEW", "AUTO_RENEW_DISABLED", nil, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ev, err := apple.ToEvent(ptr(appleN(tc.typ, tc.sub, pT0, 1, apple.JWSTransactionDecodedPayload{ExpiresDate: exp}, tc.ren)))
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, ev.AutoRenew)
+		})
+	}
+}

@@ -110,7 +110,7 @@ func recordable(err error) bool {
 		errors.Is(err, entitlements.ErrUnsupported)
 }
 
-const selectCols = `source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, environment`
+const selectCols = `source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, environment, refunded_transactions, auto_renew`
 
 func scan(row pgx.Row) (*entitlements.Entitlement, error) {
 	var (
@@ -120,12 +120,15 @@ func scan(row pgx.Row) (*entitlements.Entitlement, error) {
 		expires *time.Time
 		env     string
 	)
-	if err := row.Scan(&source, &e.OriginalTxID, &e.UserID, &e.ProductID, &state, &expires, &e.UpdatedAt, &e.Version, &env); err != nil {
+	if err := row.Scan(&source, &e.OriginalTxID, &e.UserID, &e.ProductID, &state, &expires, &e.UpdatedAt, &e.Version, &env, &e.RefundedTransactions, &e.AutoRenew); err != nil {
 		return nil, err
 	}
 	e.Source = entitlements.Source(source)
 	e.State = entitlements.State(state)
 	e.Environment = entitlements.Environment(env)
+	if len(e.RefundedTransactions) == 0 {
+		e.RefundedTransactions = nil
+	}
 	e.UpdatedAt = e.UpdatedAt.UTC()
 	if expires != nil {
 		e.ExpiresAt = expires.UTC()
@@ -243,14 +246,19 @@ ON CONFLICT (source, event_id) DO NOTHING`,
 	if !next.ExpiresAt.IsZero() {
 		expires = &next.ExpiresAt
 	}
+	refunded := next.RefundedTransactions
+	if refunded == nil {
+		refunded = []string{} // the column is NOT NULL
+	}
 	if _, err = tx.Exec(ctx, `
-INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, environment)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, environment, refunded_transactions, auto_renew)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT (source, original_tx_id) DO UPDATE SET
     user_id = EXCLUDED.user_id, product_id = EXCLUDED.product_id, state = EXCLUDED.state,
     expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at, version = EXCLUDED.version,
-    environment = EXCLUDED.environment`,
-		string(ev.Source), ev.OriginalTxID, next.UserID, next.ProductID, string(next.State), expires, next.UpdatedAt, next.Version, string(next.Environment)); err != nil {
+    environment = EXCLUDED.environment, refunded_transactions = EXCLUDED.refunded_transactions,
+    auto_renew = EXCLUDED.auto_renew`,
+		string(ev.Source), ev.OriginalTxID, next.UserID, next.ProductID, string(next.State), expires, next.UpdatedAt, next.Version, string(next.Environment), refunded, next.AutoRenew); err != nil {
 		return nil, fmt.Errorf("postgres: save entitlement: %w", err)
 	}
 	if err = finish(ctx, tx, ev.Source, ev.ID, true, ""); err != nil {
@@ -311,4 +319,32 @@ func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.E
 		return nil, fmt.Errorf("postgres: list by user: %w", err)
 	}
 	return out, nil
+}
+
+// DeleteUser implements entitlements.Store. In one transaction it clears the
+// stored raw payloads of the user's chains and deletes the entitlements; the
+// processed_events rows stay so that redelivered events remain duplicates.
+func (s *Store) DeleteUser(ctx context.Context, userID string) (int, error) {
+	if userID == "" {
+		return 0, nil
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return 0, fmt.Errorf("postgres: begin delete user: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err = tx.Exec(ctx, `
+UPDATE processed_events p SET raw = NULL
+FROM entitlements e
+WHERE e.user_id = $1 AND p.source = e.source AND p.original_tx_id = e.original_tx_id AND p.raw IS NOT NULL`, userID); err != nil {
+		return 0, fmt.Errorf("postgres: clear raw payloads: %w", err)
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM entitlements WHERE user_id = $1`, userID)
+	if err != nil {
+		return 0, fmt.Errorf("postgres: delete entitlements: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("postgres: commit delete user: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
 }

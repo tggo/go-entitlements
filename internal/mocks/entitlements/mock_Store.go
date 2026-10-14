@@ -82,6 +82,63 @@ func (_c *MockStore_Apply_Call) RunAndReturn(run func(context.Context, entitleme
 	return _c
 }
 
+// DeleteUser provides a mock function with given fields: ctx, userID
+func (_m *MockStore) DeleteUser(ctx context.Context, userID string) (int, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUser")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (int, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) int); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_DeleteUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUser'
+type MockStore_DeleteUser_Call struct {
+	*mock.Call
+}
+
+// DeleteUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+func (_e *MockStore_Expecter) DeleteUser(ctx interface{}, userID interface{}) *MockStore_DeleteUser_Call {
+	return &MockStore_DeleteUser_Call{Call: _e.mock.On("DeleteUser", ctx, userID)}
+}
+
+func (_c *MockStore_DeleteUser_Call) Run(run func(ctx context.Context, userID string)) *MockStore_DeleteUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStore_DeleteUser_Call) Return(_a0 int, _a1 error) *MockStore_DeleteUser_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_DeleteUser_Call) RunAndReturn(run func(context.Context, string) (int, error)) *MockStore_DeleteUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: ctx, source, originalTxID
 func (_m *MockStore) Get(ctx context.Context, source entitlements.Source, originalTxID string) (*entitlements.Entitlement, error) {
 	ret := _m.Called(ctx, source, originalTxID)

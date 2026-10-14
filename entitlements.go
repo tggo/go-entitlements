@@ -72,10 +72,14 @@ type Event struct {
 	// SupersedesTxID is set when this purchase replaces an older one
 	// (Google linkedPurchaseToken).
 	SupersedesTxID string
-	ProductID      string
-	State          State
-	ExpiresAt      time.Time
-	OccurredAt     time.Time // signedDate / eventTimeMillis — ordering key
+	// TransactionID identifies the one transaction (one billing period) this
+	// event is about: Apple transactionId. Empty when the source has no such
+	// notion (Google); the refund bookkeeping below is then off.
+	TransactionID string
+	ProductID     string
+	State         State
+	ExpiresAt     time.Time
+	OccurredAt    time.Time // signedDate / eventTimeMillis — ordering key
 	// Restores marks an event that lifts a refunded/revoked chain (Apple
 	// REFUND_REVERSED). Without it only an active event can leave a terminal
 	// state; with it any non-terminal state can, if strictly newer.
@@ -87,7 +91,11 @@ type Event struct {
 	NoRevive bool
 	// Environment is where the purchase was made. Empty means production.
 	Environment Environment
-	Raw         []byte
+	// AutoRenew says whether the subscription will renew (Apple
+	// renewalInfo.autoRenewStatus, Google autoRenewEnabled); nil when the
+	// event does not say. A nil value never overwrites a stored one.
+	AutoRenew *bool
+	Raw       []byte
 }
 
 // Entitlement is the current state of one subscription chain.
@@ -101,7 +109,21 @@ type Entitlement struct {
 	UpdatedAt    time.Time // OccurredAt of the last applied event
 	Version      int64
 	Environment  Environment // from the last applied event
+	// RefundedTransactions lists transactions of this chain that were refunded
+	// or revoked (Apple transactionId), oldest first, at most
+	// MaxRefundedTransactions. A refund names one transaction: the chain ends
+	// only if that was the one currently granting access, and a renewal of a
+	// listed transaction is ignored.
+	RefundedTransactions []string
+	// AutoRenew is the last known renewal setting, nil if never reported. An
+	// active entitlement with AutoRenew false is a churn signal: it will lapse
+	// at ExpiresAt unless the user turns renewal back on.
+	AutoRenew *bool
 }
+
+// MaxRefundedTransactions bounds Entitlement.RefundedTransactions; the oldest
+// entries are dropped first.
+const MaxRefundedTransactions = 64
 
 // Sandbox reports whether this is a non-production entitlement.
 func (e Entitlement) Sandbox() bool { return e.Environment.Sandbox() }
@@ -132,6 +154,9 @@ var (
 	// Retrying cannot help; transports should acknowledge or reject it, not
 	// ask the store to redeliver.
 	ErrInvalidEvent = errors.New("entitlements: invalid event")
+	// ErrUserConflict means a chain already belongs to a different user. A
+	// chain's owner is never reassigned.
+	ErrUserConflict = errors.New("entitlements: chain belongs to another user")
 	// ErrInvalidSignature means the payload failed verification.
 	ErrInvalidSignature = errors.New("entitlements: invalid signature")
 )

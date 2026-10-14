@@ -20,37 +20,68 @@
 
   function isTerminal(s) { return s === 'refunded' || s === 'revoked'; }
 
+  var MAX_REFUNDED = 64; // entitlements.MaxRefundedTransactions
+
+  function withTx(list, id) {
+    if (!id || list.indexOf(id) >= 0) return list;
+    list = list.concat([id]);
+    return list.length > MAX_REFUNDED ? list.slice(list.length - MAX_REFUNDED) : list;
+  }
+  function laterOf(a, b) { return b > a ? b : a; }
+
   /* statemachine.go: Apply. Returns {next} or {stale: reason}. */
   function applyEvent(cur, ev) {
     if (!cur) {
       return { next: {
         userId: ev.userId, productId: ev.productId, tx: ev.tx, source: ev.source,
         state: ev.state, expiresAt: ev.expiresAt, updatedAt: ev.occurredAt,
-        version: 1, environment: ev.environment || ''
+        version: 1, environment: ev.environment || '',
+        refunded: isTerminal(ev.state) ? withTx([], ev.transactionId) : []
       } };
     }
-    if (ev.occurredAt < cur.updatedAt) {
+    var tx = ev.transactionId || '';
+    var refundedTx = !!tx && cur.refunded.indexOf(tx) >= 0;
+    // A renewal (a new, unrefunded transaction that outlasts the refunded one)
+    // may arrive after the REFUND of the transaction it replaces, even if it
+    // was signed earlier.
+    var succeeds = isTerminal(cur.state) && ev.state === 'active' && !ev.noRevive &&
+      !!tx && !refundedTx && ev.expiresAt > cur.expiresAt;
+
+    if (ev.occurredAt < cur.updatedAt && !succeeds) {
       return { stale: 'It is older than the last event applied (' + fmt(cur.updatedAt) + ').' };
     }
+    if (refundedTx && !isTerminal(ev.state) && !ev.restores) {
+      return { stale: 'That transaction was refunded.' };
+    }
+    var n = Object.assign({}, cur);
+    n.refunded = cur.refunded.slice();
+
     if (ev.source === 'apple' && ev.state === 'refunded' && !isTerminal(cur.state) &&
         ev.expiresAt && ev.expiresAt < cur.expiresAt) {
-      return { stale: 'It refunds an older transaction (expires ' + fmt(ev.expiresAt) +
-        ') but the chain already runs to ' + fmt(cur.expiresAt) + '.' };
+      if (!tx) {
+        return { stale: 'It refunds an older transaction (expires ' + fmt(ev.expiresAt) +
+          ') but the chain already runs to ' + fmt(cur.expiresAt) + '.' };
+      }
+      n.refunded = withTx(n.refunded, tx);
+      n.version = cur.version + 1;
+      n.updatedAt = laterOf(cur.updatedAt, ev.occurredAt);
+      return { next: n, note: 'refund recorded' };
     }
     if (isTerminal(cur.state) && !isTerminal(ev.state)) {
       var reactivates = !ev.noRevive && (ev.state === 'active' || ev.restores) && ev.occurredAt > cur.updatedAt;
-      if (!reactivates) {
+      if (!reactivates && !succeeds) {
         return { stale: 'The chain is ' + cur.state + '. This event wants ' + ev.state +
           ', and only a new purchase, a renewal or a refund reversal may lift that.' };
       }
     }
-    var n = Object.assign({}, cur);
     n.state = ev.state;
+    if (isTerminal(ev.state)) n.refunded = withTx(n.refunded, tx);
+    else if (ev.restores && tx) n.refunded = n.refunded.filter(function (id) { return id !== tx; });
     if (ev.expiresAt) n.expiresAt = ev.expiresAt;
     if (ev.productId) n.productId = ev.productId;
     if (ev.userId) n.userId = ev.userId;
     n.environment = ev.environment || '';
-    n.updatedAt = ev.occurredAt;
+    n.updatedAt = laterOf(cur.updatedAt, ev.occurredAt);
     n.version = cur.version + 1;
     return { next: n };
   }
@@ -109,7 +140,7 @@
       if (p.graceEnd > expires) expires = p.graceEnd;
     }
     return { event: {
-      id: p.uuid, source: 'apple', userId: p.userId || '', tx: p.tx, productId: p.product,
+      id: p.uuid, source: 'apple', userId: p.userId || '', tx: p.tx, transactionId: p.txn || ('t-' + p.uuid), productId: p.product,
       state: state, expiresAt: expires, occurredAt: p.signed,
       restores: !!m.restores, noRevive: !!(m.ambiguous && !m.restores),
       environment: p.env || '', supersedes: ''
@@ -176,7 +207,7 @@
     if (!cur) this.order.push(ck);
     this.chains[ck] = r.next;
     this.processed[pk] = 'applied';
-    return { kind: 'applied', ent: r.next, before: cur };
+    return { kind: 'applied', ent: r.next, before: cur, note: r.note };
   };
 
   // Service.Process. Returns {kind, stopGate, ...}
@@ -190,7 +221,7 @@
       if (old) { ev.userId = old.userId; ev.inherited = true; }
     }
     var res = this._storeApply(ev, function (cur) { return applyEvent(cur, ev); });
-    var out = { kind: res.kind, ev: ev, ent: res.ent, before: res.before, reason: res.reason };
+    var out = { kind: res.kind, ev: ev, ent: res.ent, before: res.before, reason: res.reason, note: res.note };
     if (res.kind === 'error') { out.gate = 3; return out; }
     if (ev.supersedes && ev.supersedes !== ev.tx) {
       out.superseded = this._supersede(ev);
@@ -201,7 +232,7 @@
   Service.prototype._supersede = function (ev) {
     var old = { id: ev.id + '#supersede', source: ev.source, tx: ev.supersedes, state: 'expired', occurredAt: ev.occurredAt };
     var res = this._storeApply(old, function (cur) {
-      if (!cur) return { next: { source: old.source, tx: old.tx, state: 'expired', updatedAt: old.occurredAt, version: 1, userId: '', productId: '', expiresAt: 0 } };
+      if (!cur) return { next: { source: old.source, tx: old.tx, state: 'expired', updatedAt: old.occurredAt, version: 1, userId: '', productId: '', expiresAt: 0, refunded: [] } };
       if (isTerminal(cur.state) || cur.state === 'expired') return { stale: 'already ended' };
       return applyEvent(cur, old);
     });
@@ -274,6 +305,7 @@
     for (var j = 0; j < GATE_COUNT; j++) t.gates[j] = 'pass';
     var e = out.ent;
     t.text = 'Chain ' + e.tx + ' is now ' + e.state + ', expires ' + fmt(e.expiresAt) + ', version ' + e.version + '.';
+    if (out.note === 'refund recorded') t.text = 'The refund names an older transaction, so it is recorded against that one and the chain keeps its state (' + e.state + ', expires ' + fmt(e.expiresAt) + ', version ' + e.version + ').';
     if (ev.inherited) t.text += ' The message had no account id, so the user came from the chain it replaces.';
     if (out.superseded === 'closed') t.text += ' The old token ' + ev.supersedes + ' was closed.';
     if (out.superseded === 'tombstone') t.text += ' The old token ' + ev.supersedes + ' was never seen, so a tombstone was written.';
@@ -289,7 +321,7 @@
     var chains = {};
     svc.order.forEach(function (k) {
       var e = svc.chains[k];
-      chains[k] = { state: e.state, version: e.version, expires: iso(e.expiresAt), updated: iso(e.updatedAt), user: e.userId || '' };
+      chains[k] = { state: e.state, version: e.version, expires: iso(e.expiresAt), updated: iso(e.updatedAt), user: e.userId || '', refunded: (e.refunded || []).slice() };
     });
     var access = {};
     checkDates.forEach(function (c) { access[c] = svc.isActive(user, product, d(c)); });

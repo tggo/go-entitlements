@@ -31,6 +31,7 @@ func NewAppleHandler(parser AppleParser, svc Processor, opts ...Option) http.Han
 }
 
 func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer recoverPanic(w, h.log)
 	body, ok := readBody(w, r, h.cfg.maxBody, h.log)
 	if !ok {
 		return
@@ -38,7 +39,8 @@ func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ev, err := h.parser.Parse(body)
 	switch {
 	case err == nil:
-		process(w, r, h.svc, ev, h.log)
+		status, _ := process(r, h.svc, ev, h.log)
+		respond(w, status)
 	case errors.Is(err, entitlements.ErrIgnored):
 		h.log.Info("notification ignored", "reason", err)
 		w.WriteHeader(http.StatusOK)

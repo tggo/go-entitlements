@@ -206,31 +206,61 @@ func TestApple_RenewalExtensionSummaryIgnored(t *testing.T) {
 	assert.ErrorIs(t, err, entitlements.ErrIgnored)
 }
 
+func renewalTx(id string, signed int64) func(f *testutil.AppleFixture) {
+	return func(f *testutil.AppleFixture) {
+		at(signed)(f)
+		f.Transaction["transactionId"] = id
+	}
+}
+
 func TestApple_RefundOfOlderTransactionKeepsChain(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	p := apple.NewParser(mustVerifier(t, ca))
 	st := memory.New()
 	svc := newSvc(t, st)
 	_, _ = process(t, p, svc, appleBody(t, ca, "subscribed", at(msSub)))
-	_, err := process(t, p, svc, appleBody(t, ca, "did_renew_next_period", at(msSub+1000)))
+	_, err := process(t, p, svc, appleBody(t, ca, "did_renew_next_period", renewalTx("2000000000003", msSub+1000)))
 	require.NoError(t, err)
 
-	// Refund of the first transaction (expiresDate msExpiry < current msExpiry2).
+	// Refund of the first transaction (…002, expiresDate msExpiry < current msExpiry2).
 	_, err = process(t, p, svc, appleBody(t, ca, "refund", at(msSub+2000)))
-	assert.ErrorIs(t, err, entitlements.ErrStale)
+	require.NoError(t, err, "recorded, not dropped")
 	cur, gerr := st.Get(context.Background(), entitlements.SourceApple, "2000000000001")
 	require.NoError(t, gerr)
 	assert.Equal(t, entitlements.StateActive, cur.State)
 	assert.Equal(t, time.UnixMilli(msExpiry2).UTC(), cur.ExpiresAt)
+	assert.Equal(t, []string{"2000000000002"}, cur.RefundedTransactions)
 
 	// Refund of the latest transaction still ends the chain.
 	got, err := process(t, p, svc, appleBody(t, ca, "refund", func(f *testutil.AppleFixture) {
-		f.Notification["signedDate"] = float64(msSub + 3000)
+		renewalTx("2000000000003", msSub+3000)(f)
 		f.Notification["notificationUUID"] = "uuid-refund-latest"
 		f.Transaction["expiresDate"] = float64(msExpiry2)
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, entitlements.StateRefunded, got.State)
+	assert.Equal(t, []string{"2000000000002", "2000000000003"}, got.RefundedTransactions)
+}
+
+// The refund of the first transaction is delivered before the renewal that
+// replaced it, and the renewal was signed before the refund.
+func TestApple_RenewalDeliveredAfterTheRefundOfTheTransactionItReplaced(t *testing.T) {
+	ca := testutil.NewAppleCA(t)
+	p := apple.NewParser(mustVerifier(t, ca))
+	svc := newSvc(t, memory.New())
+	_, err := process(t, p, svc, appleBody(t, ca, "subscribed", at(msSub)))
+	require.NoError(t, err)
+	got, err := process(t, p, svc, appleBody(t, ca, "refund", at(msSub+2000)))
+	require.NoError(t, err)
+	require.Equal(t, entitlements.StateRefunded, got.State)
+
+	got, err = process(t, p, svc, appleBody(t, ca, "did_renew_next_period", renewalTx("2000000000003", msSub+1000)))
+	require.NoError(t, err, "the renewal is a different transaction")
+	assert.Equal(t, entitlements.StateActive, got.State)
+	assert.Equal(t, time.UnixMilli(msExpiry2).UTC(), got.ExpiresAt)
+	ok, err := svc.IsActive(context.Background(), "7e3fb20b-4cdb-47cc-936d-99d65f608138", "com.example.pro.monthly")
+	require.NoError(t, err)
+	assert.False(t, ok, "IsActive uses the injected clock, which is well past the 2025 expiry")
 }
 
 func mustVerifier(t *testing.T, ca *testutil.AppleCA, opts ...apple.Option) *apple.Verifier {

@@ -2,6 +2,7 @@ package entitlements_test
 
 import (
 	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
@@ -80,7 +81,8 @@ func Example_google() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	parser, err := google.NewParser(androidpublisher.NewFetcher(playAPI), "com.example.app")
+	fetcher := androidpublisher.NewFetcher(playAPI)
+	parser, err := google.NewParser(fetcher, "com.example.app")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -90,9 +92,44 @@ func Example_google() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger), httpx.WithPushAuthenticator(auth))
+	// WithAcknowledger acknowledges new purchases once they are stored; Google
+	// refunds purchases that are not acknowledged within 3 days.
+	handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger),
+		httpx.WithPushAuthenticator(auth), httpx.WithAcknowledger(fetcher))
 	if err != nil {
 		log.Fatal(err)
 	}
 	http.Handle("/webhooks/google", handler)
 }
+
+func Example_attributeUsers() {
+	ctx := context.Background()
+	logger := slog.Default()
+
+	svc := entitlements.NewService(memory.New(),
+		entitlements.WithLogger(logger),
+		// Path 1: look the user up when an event arrives without one, for example
+		// in your originalTransactionId -> user table. An error makes the store retry.
+		entitlements.WithUserResolver(func(ctx context.Context, ev entitlements.Event) (string, error) {
+			return lookupUser(ctx, ev.Source, ev.OriginalTxID) // "" if unknown yet
+		}),
+		// React to a committed change, e.g. to tell the user or flip a feature flag.
+		entitlements.WithOnChange(func(ctx context.Context, before, after *entitlements.Entitlement) {
+			logger.InfoContext(ctx, "entitlement changed", "user", after.UserID, "state", after.State)
+		}))
+
+	// Path 2: the app reports the purchase right after it happens. This is
+	// idempotent; a chain that already belongs to another user returns
+	// entitlements.ErrUserConflict and is never reassigned.
+	_, err := svc.LinkUser(ctx, entitlements.SourceApple, "2000000000001", "user-42")
+	if errors.Is(err, entitlements.ErrUserConflict) {
+		log.Println("this purchase belongs to another account")
+	}
+
+	// Erasure request: delete the user's entitlements and stored payloads.
+	if _, err := svc.ForgetUser(ctx, "user-42"); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func lookupUser(context.Context, entitlements.Source, string) (string, error) { return "", nil }

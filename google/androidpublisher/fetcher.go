@@ -46,19 +46,42 @@ func (f *Fetcher) GetV2(ctx context.Context, packageName, purchaseToken string) 
 	return convertV2(resp)
 }
 
+// Acknowledge implements google.Acknowledger over
+// purchases.subscriptions.acknowledge (POST
+// /androidpublisher/v3/applications/{packageName}/purchases/subscriptions/{subscriptionId}/tokens/{token}:acknowledge).
+// subscriptionsv2 has no acknowledge method. Failures are classified like
+// GetV2, plus google.ErrAlreadyAcknowledged for HTTP 409.
+// See https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions/acknowledge.
+func (f *Fetcher) Acknowledge(ctx context.Context, packageName, subscriptionID, purchaseToken string) error {
+	err := f.svc.Purchases.Subscriptions.Acknowledge(packageName, subscriptionID, purchaseToken,
+		&play.SubscriptionPurchasesAcknowledgeRequest{}).Context(ctx).Do()
+	if err != nil {
+		return google.RedactToken(classifyAck(err), purchaseToken)
+	}
+	return nil
+}
+
+func classifyAck(err error) error {
+	var apiErr *googleapi.Error
+	if errors.As(err, &apiErr) && apiErr.Code == http.StatusConflict {
+		return fmt.Errorf("androidpublisher: subscriptions.acknowledge: %w: %w", google.ErrAlreadyAcknowledged, err)
+	}
+	return classify(err)
+}
+
 func classify(err error) error {
 	var apiErr *googleapi.Error
 	if errors.As(err, &apiErr) {
 		switch apiErr.Code {
 		case http.StatusNotFound, http.StatusGone:
-			return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrPurchaseNotFound, err)
+			return fmt.Errorf("androidpublisher: play api: %w: %w", google.ErrPurchaseNotFound, err)
 		case http.StatusBadRequest:
-			return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrPurchaseInvalid, err)
+			return fmt.Errorf("androidpublisher: play api: %w: %w", google.ErrPurchaseInvalid, err)
 		case http.StatusUnauthorized, http.StatusForbidden:
-			return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrFetchConfig, err)
+			return fmt.Errorf("androidpublisher: play api: %w: %w", google.ErrFetchConfig, err)
 		}
 	}
-	return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrFetchTransient, err)
+	return fmt.Errorf("androidpublisher: play api: %w: %w", google.ErrFetchTransient, err)
 }
 
 func convertV2(resp *play.SubscriptionPurchaseV2) (*google.SubscriptionPurchaseV2, error) {
@@ -79,6 +102,9 @@ func convertV2(resp *play.SubscriptionPurchaseV2) (*google.SubscriptionPurchaseV
 			continue
 		}
 		item := google.LineItem{ProductID: li.ProductId, LatestSuccessfulOrderID: li.LatestSuccessfulOrderId}
+		if li.AutoRenewingPlan != nil {
+			item.AutoRenewingPlan = &google.AutoRenewingPlan{AutoRenewEnabled: li.AutoRenewingPlan.AutoRenewEnabled}
+		}
 		if li.ExpiryTime != "" {
 			t, err := time.Parse(time.RFC3339Nano, li.ExpiryTime)
 			if err != nil {

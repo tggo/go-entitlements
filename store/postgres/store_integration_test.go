@@ -483,3 +483,41 @@ func (s *StoreSuite) TestMigration004ConvertsSandboxFlag() {
 	s.Equal(entitlements.EnvironmentSandbox, a.Environment)
 	s.Equal(entitlements.Environment(""), b.Environment)
 }
+
+func (s *StoreSuite) TestDeleteUserClearsRawPayloadsButKeepsEventIDs() {
+	ctx := context.Background()
+	mine := s.ev("mine", entitlements.StateActive, s.now)
+	theirs := s.ev("theirs", entitlements.StateActive, s.now)
+	theirs.OriginalTxID, theirs.UserID = "tx-other", "u2"
+	for _, e := range []entitlements.Event{mine, theirs} {
+		_, err := s.process(e)
+		s.Require().NoError(err)
+	}
+	// a stale event on the user's chain also carries a payload
+	_, err := s.process(s.ev("mine-old", entitlements.StateExpired, s.now.Add(-time.Hour)))
+	s.Require().ErrorIs(err, entitlements.ErrStale)
+
+	n, err := s.store.DeleteUser(ctx, "u1")
+	s.Require().NoError(err)
+	s.Equal(1, n)
+
+	rows, err := s.db.Query(ctx, `SELECT event_id, raw IS NULL FROM processed_events ORDER BY event_id`)
+	s.Require().NoError(err)
+	defer rows.Close()
+	rawGone := map[string]bool{}
+	for rows.Next() {
+		var id string
+		var gone bool
+		s.Require().NoError(rows.Scan(&id, &gone))
+		rawGone[id] = gone
+	}
+	s.Equal(map[string]bool{"mine": true, "mine-old": true, "theirs": false}, rawGone)
+}
+
+func (s *StoreSuite) TestAutoRenewIsNullUntilReported() {
+	_, err := s.process(s.ev("e1", entitlements.StateActive, s.now))
+	s.Require().NoError(err)
+	var isNull bool
+	s.Require().NoError(s.db.QueryRow(context.Background(), `SELECT auto_renew IS NULL FROM entitlements`).Scan(&isNull))
+	s.True(isNull)
+}

@@ -34,7 +34,7 @@ func TestGoogleHandler_FetchErrorClasses(t *testing.T) {
 			t.Parallel()
 			log, logs := newRecorder()
 			parser := mocks.NewMockGoogleParser(t)
-			parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(entitlements.Event{}, tt.err)
+			parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(entitlements.Event{}), tt.err)
 			h := mustGoogle(t, parser, mocks.NewMockProcessor(t), log)
 
 			assert.Equal(t, tt.wantCode, post(h, "body").Code)

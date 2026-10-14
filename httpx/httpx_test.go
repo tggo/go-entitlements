@@ -107,7 +107,7 @@ func TestGoogleHandler(t *testing.T) {
 			t.Parallel()
 			parser := mocks.NewMockGoogleParser(t)
 			svc := mocks.NewMockProcessor(t)
-			parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(tt.parseEv, tt.parseErr)
+			parser.EXPECT().ParseResult(mock.Anything, []byte("body")).Return(gres(tt.parseEv), tt.parseErr)
 			if tt.process {
 				ent := &entitlements.Entitlement{State: entitlements.StateActive}
 				svc.EXPECT().Process(mock.Anything, tt.parseEv).Return(ent, tt.procErr)
@@ -130,7 +130,7 @@ func TestGoogleHandler_PushAuthenticator(t *testing.T) {
 		t.Parallel()
 		auth := func(*http.Request) error { return nil }
 		parser := mocks.NewMockGoogleParser(t)
-		parser.EXPECT().Parse(mock.Anything, mock.Anything).Return(entitlements.Event{}, entitlements.ErrIgnored)
+		parser.EXPECT().ParseResult(mock.Anything, mock.Anything).Return(gres(entitlements.Event{}), entitlements.ErrIgnored)
 		h := mustGoogle(t, parser, mocks.NewMockProcessor(t), testLogger(t), httpx.WithPushAuthenticator(auth))
 		assert.Equal(t, http.StatusOK, post(h, "body").Code)
 	})

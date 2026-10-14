@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/tggo/go-entitlements"
+	"github.com/tggo/go-entitlements/google"
 	"github.com/tggo/go-entitlements/httpx"
 )
 
@@ -74,4 +76,9 @@ func mustGoogle(tb testing.TB, p httpx.GoogleParser, svc httpx.Processor, log *s
 		tb.Fatal(err)
 	}
 	return h
+}
+
+// gres wraps one event in a parse result.
+func gres(ev entitlements.Event) google.Result {
+	return google.Result{Events: []entitlements.Event{ev}}
 }

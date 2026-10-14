@@ -46,9 +46,9 @@ import (
 var updateSite = flag.Bool("update-site", false, "rewrite the expect blocks in site/scenarios.json from the real library")
 
 type siteApple struct {
-	Type, Subtype, UUID, Tx, Product, UserID, Env, TxType string
-	Status                                                int
-	Signed, Expires, GraceEnd, RevocationDate             string
+	Type, Subtype, UUID, Tx, Txn, Product, UserID, Env, TxType string
+	Status                                                     int
+	Signed, Expires, GraceEnd, RevocationDate                  string
 }
 
 type siteGoogle struct {
@@ -85,6 +85,7 @@ func (c *siteCard) UnmarshalJSON(b []byte) error {
 			Subtype   string `json:"subtype"`
 			UUID      string `json:"uuid"`
 			Tx        string `json:"tx"`
+			Txn       string `json:"txn"`
 			Product   string `json:"product"`
 			UserID    string `json:"userId"`
 			Env       string `json:"env"`
@@ -98,7 +99,7 @@ func (c *siteCard) UnmarshalJSON(b []byte) error {
 		if err := json.Unmarshal(raw.Apple, &a); err != nil {
 			return err
 		}
-		c.Apple = siteApple{a.Type, a.Subtype, a.UUID, a.Tx, a.Product, a.UserID, a.Env, a.TxType, a.Status, a.Signed, a.Expires, a.GraceEnd, a.Revocated}
+		c.Apple = siteApple{a.Type, a.Subtype, a.UUID, a.Tx, a.Txn, a.Product, a.UserID, a.Env, a.TxType, a.Status, a.Signed, a.Expires, a.GraceEnd, a.Revocated}
 	}
 	if len(raw.Google) > 0 {
 		var g struct {
@@ -128,6 +129,8 @@ type siteChain struct {
 	Expires string `json:"expires"`
 	Updated string `json:"updated"`
 	User    string `json:"user"`
+	// Refunded lists the refunded transactions, oldest first (never nil).
+	Refunded []string `json:"refunded"`
 }
 
 type siteExpect struct {
@@ -251,11 +254,11 @@ type recordingGoogle struct {
 	p *google.Parser
 }
 
-func (g recordingGoogle) Parse(ctx context.Context, body []byte) (entitlements.Event, error) {
+func (g recordingGoogle) ParseResult(ctx context.Context, body []byte) (google.Result, error) {
 	g.r.parseCalled = true
-	ev, err := g.p.Parse(ctx, body)
+	res, err := g.p.ParseResult(ctx, body)
 	g.r.parseErr = err
-	return ev, err
+	return res, err
 }
 
 type siteFetcher struct{ r *siteRig }
@@ -311,8 +314,12 @@ func (r *siteRig) appleBody(c siteCard) []byte {
 	}
 	f := testutil.AppleFixture{Notification: n}
 	if a.Type != "TEST" {
+		txn := a.Txn
+		if txn == "" {
+			txn = "t-" + a.UUID
+		}
 		tx := map[string]any{
-			"originalTransactionId": a.Tx, "transactionId": a.Tx + "-t", "productId": a.Product,
+			"originalTransactionId": a.Tx, "transactionId": txn, "productId": a.Product,
 			"bundleId": sitePackage, "environment": env, "appAccountToken": a.UserID,
 		}
 		if ms := siteMs(t, a.Expires); ms != 0 {
@@ -453,7 +460,8 @@ func (r *siteRig) chains() map[string]siteChain {
 			}
 			return t.UTC().Format("2006-01-02")
 		}
-		out[key] = siteChain{State: string(e.State), Version: e.Version, Expires: date(e.ExpiresAt), Updated: date(e.UpdatedAt), User: e.UserID}
+		refunded := append([]string{}, e.RefundedTransactions...)
+		out[key] = siteChain{State: string(e.State), Version: e.Version, Expires: date(e.ExpiresAt), Updated: date(e.UpdatedAt), User: e.UserID, Refunded: refunded}
 	}
 	return out
 }

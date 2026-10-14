@@ -142,3 +142,8 @@ func TestParser_ConcurrentUse(t *testing.T) {
 }
 
 func jsonUnmarshal(b []byte, v any) error { return json.Unmarshal(b, v) }
+
+func pushOf(tb testing.TB, payload string) []byte {
+	tb.Helper()
+	return testutil.GooglePushBody(tb, "m", []byte(payload))
+}

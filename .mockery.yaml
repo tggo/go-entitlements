@@ -10,6 +10,7 @@ packages:
   github.com/tggo/go-entitlements/google:
     interfaces:
       SubscriptionsFetcher:
+      Acknowledger:
   github.com/tggo/go-entitlements/httpx:
     interfaces:
       AppleParser:

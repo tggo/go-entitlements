@@ -83,6 +83,8 @@ for _, e := range list {
 
 Google Play. Create a Pub/Sub push subscription that points at the endpoint and sends an OIDC token (audience = the endpoint URL, service account = the one you pass to `pubsubauth.New`). The service account behind `androidpublisher.NewService` needs permission to view financial data for the app in the Play Console. A push endpoint without authentication is refused at construction: anyone who knew a purchase token could otherwise forge a refund.
 
+Acknowledgement: Google refunds subscriptions that are not acknowledged within 3 days. With `httpx.WithAcknowledger` the handler acknowledges a purchase (`purchases.subscriptions.acknowledge`) after its entitlement is stored, only when Google reports the purchase as pending and it grants access. If the acknowledge fails transiently the push answers 500; Pub/Sub redelivers, the event is a duplicate, and the acknowledge is tried again. Without the option, acknowledge from your app or backend yourself. The service account needs the "Manage orders and subscriptions" permission.
+
 <!-- example:Example_google -->
 ```go
 ctx := context.Background()
@@ -93,7 +95,8 @@ playAPI, err := play.NewService(ctx) // credentials from GOOGLE_APPLICATION_CRED
 if err != nil {
 	log.Fatal(err)
 }
-parser, err := google.NewParser(androidpublisher.NewFetcher(playAPI), "com.example.app")
+fetcher := androidpublisher.NewFetcher(playAPI)
+parser, err := google.NewParser(fetcher, "com.example.app")
 if err != nil {
 	log.Fatal(err)
 }
@@ -103,7 +106,10 @@ auth, err := pubsubauth.New("https://example.com/webhooks/google", "push@my-proj
 if err != nil {
 	log.Fatal(err)
 }
-handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger), httpx.WithPushAuthenticator(auth))
+// WithAcknowledger acknowledges new purchases once they are stored; Google
+// refunds purchases that are not acknowledged within 3 days.
+handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger),
+	httpx.WithPushAuthenticator(auth), httpx.WithAcknowledger(fetcher))
 if err != nil {
 	log.Fatal(err)
 }
@@ -112,7 +118,47 @@ http.Handle("/webhooks/google", handler)
 
 `Service` has `Process` (used by the handlers), `IsActive(ctx, userID, productID)`, `Get(ctx, source, originalTxID)` and `ListByUser(ctx, userID)`.
 
-The user is identified by `appAccountToken` on Apple and `obfuscatedExternalAccountId` on Google. Set it when the purchase is made in your app. A notification without it is still applied, keyed by the transaction (`originalTransactionId` or purchase token) with an empty `UserID`, and the service logs a warning. `ListByUser("")` returns nothing, so attribute these with `Get` and your own transaction-to-user table. Treat the token as a hint from the client, not as authentication: a client can send someone else's UUID.
+The user is identified by `appAccountToken` on Apple and `obfuscatedExternalAccountId` on Google. Set it when the purchase is made in your app and events arrive attributed. Treat the token as a hint from the client, not as authentication: a client can send someone else's UUID.
+
+If your app does not set it, an event arrives with an empty `UserID`. It is still applied, keyed by the transaction (`originalTransactionId` or purchase token), and the service logs a warning. A user on a chain that is later retired by a Google upgrade is inherited automatically. For the rest there are two ways to attach users:
+
+<!-- example:Example_attributeUsers -->
+```go
+ctx := context.Background()
+logger := slog.Default()
+
+svc := entitlements.NewService(memory.New(),
+	entitlements.WithLogger(logger),
+	// Path 1: look the user up when an event arrives without one, for example
+	// in your originalTransactionId -> user table. An error makes the store retry.
+	entitlements.WithUserResolver(func(ctx context.Context, ev entitlements.Event) (string, error) {
+		return lookupUser(ctx, ev.Source, ev.OriginalTxID) // "" if unknown yet
+	}),
+	// React to a committed change, e.g. to tell the user or flip a feature flag.
+	entitlements.WithOnChange(func(ctx context.Context, before, after *entitlements.Entitlement) {
+		logger.InfoContext(ctx, "entitlement changed", "user", after.UserID, "state", after.State)
+	}))
+
+// Path 2: the app reports the purchase right after it happens. This is
+// idempotent; a chain that already belongs to another user returns
+// entitlements.ErrUserConflict and is never reassigned.
+_, err := svc.LinkUser(ctx, entitlements.SourceApple, "2000000000001", "user-42")
+if errors.Is(err, entitlements.ErrUserConflict) {
+	log.Println("this purchase belongs to another account")
+}
+
+// Erasure request: delete the user's entitlements and stored payloads.
+if _, err := svc.ForgetUser(ctx, "user-42"); err != nil {
+	log.Fatal(err)
+}
+```
+
+- `WithUserResolver` is asked for every event that has no user. Use it when you keep your own transaction-to-user table.
+- `LinkUser(ctx, source, originalTxID, userID)` attaches a user to an existing chain; call it when your app reports a purchase. It is atomic and idempotent, returns `ErrUserConflict` for a chain owned by someone else, and `ErrNotFound` before the first notification arrived (retry after it).
+- A chain's owner is never changed afterwards: a later event with another user ID, or none, leaves it alone (the service logs a warning for a different one). `ListByUser("")` returns nothing.
+- `WithOnChange` runs after each committed change, and `ForgetUser` deletes a user's entitlements and stored payloads (see Privacy below).
+
+`Entitlement.AutoRenew` is the last known renewal setting (Apple `autoRenewStatus`, nil if never reported); an active entitlement with `AutoRenew` false is a churn signal.
 
 ### Sandbox and test purchases
 
@@ -133,6 +179,35 @@ curl 'localhost:8080/entitlements?user_id=7e3fb20b-4cdb-47cc-936d-99d65f608138'
 
 `APPLE_ROOT_CA_PEM` replaces Apple's root with your own and is for this local demo only. Never set it in production.
 
+## App Store Server API
+
+`apple/serverapi` calls Apple's App Store Server API: subscription statuses, transaction history, transaction info, order lookup, test notifications and notification history. Requests are signed with your App Store Connect key (ES256 JWT, a fresh one per request), 429 and 5xx answers are retried honoring Retry-After, and every signed value Apple returns is verified with `apple.Verifier` and pinned to your bundle ID and environment. The key is never logged.
+
+### Repairing a lost webhook
+
+    client, _ := serverapi.New(serverapi.Config{IssuerID: issuer, KeyID: keyID, PrivateKeyPEM: p8, BundleID: "com.example.app"})
+    results, err := serverapi.Reconcile(ctx, client, svc, originalTransactionID)
+
+`Reconcile` asks Apple for the customer's current status and feeds one event per subscription chain to the Service. Events are ordered by Apple's own `signedDate`, so a snapshot never overwrites a webhook Apple signed later, and a chain that already matches is skipped, so running it repeatedly writes nothing. After an outage, `serverapi.ReplayNotificationHistory(ctx, client, parser, svc, start, end, serverapi.ReplayOnlyFailures())` re-feeds the notifications Apple could not deliver; ones you already received count as duplicates.
+
+### Refund requests (CONSUMPTION_REQUEST)
+
+When a customer asks Apple for a refund, Apple sends CONSUMPTION_REQUEST and waits 12 hours for you to say how much of the purchase was used. You may answer only if the customer agreed to share that data; otherwise send nothing. `apple/serverapi` does the sending, and you supply the facts:
+
+    responder := serverapi.ConsumptionResponderFunc(func(ctx context.Context, req serverapi.ConsumptionRequest) (serverapi.ConsumptionInfo, error) {
+        if !hasConsent(ctx, req.UserID) {
+            return serverapi.ConsumptionInfo{}, serverapi.ErrConsentRequired // nothing is sent
+        }
+        return serverapi.ConsumptionInfo{
+            CustomerConsented: true, DeliveryStatus: serverapi.DeliveryDelivered,
+            SampleContentProvided: true, RefundPreference: serverapi.RefundDecline,
+        }, nil
+    })
+    mux.Handle("/apple", serverapi.NewConsumptionHandler(httpx.NewAppleHandler(parser, svc),
+        serverapi.ConsumptionHandlerConfig{Verifier: verifier, Responder: responder, Sender: client}))
+
+The wrapper answers CONSUMPTION_REQUEST itself and passes every other notification to the handler it wraps. The library never sets consent: the zero value means "no consent" and is never sent. If your responder or Apple fails inside the 12 hours, the endpoint answers 500 so Apple redelivers (production only; the first retry comes an hour later). Past the deadline it answers 200 and stops.
+
 ## State mapping
 
 Normalized states: `active`, `grace`, `billing_retry`, `paused`, `expired`, `refunded`, `revoked`. `Active(now)` is true for `active` and `grace` before `ExpiresAt`.
@@ -145,12 +220,12 @@ Apple (`notificationType` / `subtype`):
 | DID_FAIL_TO_RENEW with GRACE_PERIOD | grace, until `gracePeriodExpiresDate` |
 | DID_FAIL_TO_RENEW, GRACE_PERIOD_EXPIRED | billing_retry |
 | EXPIRED | expired |
-| REFUND | refunded (a refund of an older transaction does not end a chain whose newer transaction runs on) |
+| REFUND | refunds one transaction (`transactionId`): the chain ends only if that was the one granting access, otherwise the refund is recorded and the chain runs on; a renewal that arrives after the refund of the transaction it replaced still applies |
 | REVOKE | revoked |
 | REFUND_REVERSED | restores the chain; state from `data.status` |
 | DID_CHANGE_RENEWAL_STATUS, DID_CHANGE_RENEWAL_PREF, OFFER_REDEEMED, RENEWAL_EXTENDED | state from `data.status` (1 active, 2 expired, 3 billing retry, 4 grace, 5 revoked), else from `expiresDate` vs `signedDate`; never lift a refund |
 | any event whose transaction has `revocationDate` | refunded (revoked for REVOKE) |
-| TEST, ONE_TIME_CHARGE, RENEWAL_EXTENSION, REFUND_DECLINED, PRICE_INCREASE, PRICE_CHANGE, CONSUMPTION_REQUEST, METADATA_UPDATE, MIGRATION, EXTERNAL_PURCHASE_TOKEN, RESCIND_CONSENT, CHILD_CONSENT_REVOKED | ignored (your app must answer CONSUMPTION_REQUEST itself) |
+| TEST, ONE_TIME_CHARGE, RENEWAL_EXTENSION, REFUND_DECLINED, PRICE_INCREASE, PRICE_CHANGE, CONSUMPTION_REQUEST, METADATA_UPDATE, MIGRATION, EXTERNAL_PURCHASE_TOKEN, RESCIND_CONSENT, CHILD_CONSENT_REVOKED | ignored (answer it with `serverapi.NewConsumptionHandler`, see above) |
 | anything else | unsupported |
 
 An active or grace event without an expiry date is refused (`apple.ErrNoExpiry`, HTTP 200 and an error log) instead of granting access forever.
@@ -216,17 +291,15 @@ func TestConformance(t *testing.T) {
 
 ## Known limitations
 
-- Apple: if a refund for an older transaction arrives before the renewal that superseded it, the chain is refunded and the later renewal is dropped as stale. Fixing this needs per-transaction tracking.
-- Google: the library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.
-- Google: one product is stored per purchase token (the line item with the latest expiry); add-on line items are not tracked separately.
+- Google: a subscription with add-ons is stored as one entitlement per line item (`purchaseToken#productId`). A purchase with a single item keeps the plain `purchaseToken` key. When a purchase gains or loses an add-on, the row under the old key shape is not rewritten and ends at its own stored expiry; immediate item-based revocation is not tracked.
 - `go.mod` says `go 1.26.0`, not `1.26`: the Google API dependencies require it.
-- Privacy: the Postgres store keeps each webhook body in `processed_events.raw` so that events can be audited. It can contain account identifiers; call `Store.Prune` on a schedule.
+- Privacy: the Postgres store keeps each webhook body in `processed_events.raw` so that events can be audited. It can contain account identifiers; call `Store.Prune` on a schedule, and `Service.ForgetUser` for an erasure request (it clears the payloads of that user's chains and deletes the entitlements, keeping event IDs so redelivered webhooks stay duplicates).
 
 Other libraries' issues this one was tested against are in [docs/prior-art](docs/prior-art/README.md). Contributing and security reporting: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md).
 
 ## Not in scope
 
-Legacy `verifyReceipt`, Stripe and other web payment providers, consumables, and an App Store Server API client.
+Legacy `verifyReceipt`, Stripe and other web payment providers, and consumables.
 
 ## License
 

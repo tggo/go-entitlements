@@ -257,7 +257,12 @@ func (s *E2ESuite) TestApple_TestNotificationIsAcknowledged() {
 func (s *E2ESuite) TestGoogle_UpgradeViaLinkedPurchaseToken() {
 	t1, t2 := s.base, s.base.Add(24*time.Hour)
 	s.fetcher.EXPECT().GetV2(mock.Anything, googlePkg, "old-token").Return(s.googleSub("sub_state_active.json"), nil)
-	s.fetcher.EXPECT().GetV2(mock.Anything, googlePkg, "new-token").Return(s.googleSub("sub_linked_upgrade.json"), nil)
+	// An upgrade replaces the one line item. (sub_linked_upgrade.json has two
+	// items with different expiries, which is an add-on purchase: see
+	// TestGoogle_AddOnsAreOneEntitlementPerItem.)
+	upgraded := s.googleSub("sub_linked_upgrade.json")
+	upgraded.LineItems = upgraded.LineItems[1:] // premium.yearly
+	s.fetcher.EXPECT().GetV2(mock.Anything, googlePkg, "new-token").Return(upgraded, nil)
 
 	s.Equal(200, s.post("/webhooks/google", s.googlePush("m-1", "old-token", "premium.monthly", t1)))
 	old, err := s.store.Get(context.Background(), entitlements.SourceGoogle, "old-token")
@@ -285,6 +290,26 @@ func (s *E2ESuite) TestGoogle_UpgradeViaLinkedPurchaseToken() {
 		}
 	}
 	s.Equal([]string{"premium.yearly"}, active)
+}
+
+func (s *E2ESuite) TestGoogle_AddOnsAreOneEntitlementPerItem() {
+	t1 := s.base
+	multi := s.googleSub("sub_linked_upgrade.json")
+	multi.LinkedPurchaseToken = ""
+	s.fetcher.EXPECT().GetV2(mock.Anything, googlePkg, "addon-token").Return(multi, nil)
+
+	s.Equal(200, s.post("/webhooks/google", s.googlePush("m-1", "addon-token", "", t1)))
+
+	ctx := context.Background()
+	monthly, err := s.store.Get(ctx, entitlements.SourceGoogle, "addon-token#premium.monthly")
+	s.Require().NoError(err)
+	yearly, err := s.store.Get(ctx, entitlements.SourceGoogle, "addon-token#premium.yearly")
+	s.Require().NoError(err)
+	s.Equal("premium.monthly", monthly.ProductID)
+	s.Equal("premium.yearly", yearly.ProductID)
+	s.True(monthly.ExpiresAt.Before(yearly.ExpiresAt), "each item keeps its own expiry")
+	_, err = s.store.Get(ctx, entitlements.SourceGoogle, "addon-token")
+	s.ErrorIs(err, entitlements.ErrNotFound, "no row under the plain token key for a multi-item purchase")
 }
 
 func (s *E2ESuite) TestGoogle_Rejections() {

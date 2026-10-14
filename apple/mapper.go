@@ -21,6 +21,7 @@ const autoRenewable = "Auto-Renewable Subscription"
 //
 // Identity and time:
 //   - ID = notificationUUID, OriginalTxID = originalTransactionId,
+//     TransactionID = transactionId (the billing period a REFUND names),
 //     OccurredAt = signedDate of the outer payload, ExpiresAt = expiresDate.
 //   - UserID = appAccountToken when the app sets one, otherwise empty: many
 //     apps link users to originalTransactionId themselves, so the caller
@@ -42,8 +43,10 @@ const autoRenewable = "Auto-Renewable Subscription"
 //   - A transaction with revocationDate is refunded whatever the type says
 //     (REVOKE → revoked, REFUND_REVERSED restores).
 //   - REFUND_REVERSED sets Restores. REFUND carries the refunded
-//     transaction's expiresDate; Apply keeps the chain alive if a newer
-//     transaction already runs past it.
+//     transaction's id and expiresDate; Apply records it, ends the chain only
+//     if that transaction is the one currently granting access, and lets a
+//     renewal that arrives after the refund (a different transaction) revive
+//     the chain even if it was signed earlier.
 //   - Active and grace events need an expiry: without one they return
 //     ErrNoExpiry.
 //
@@ -121,17 +124,19 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 		env = entitlements.Environment(p.Data.Environment)
 	}
 	return entitlements.Event{
-		ID:           p.NotificationUUID,
-		Source:       entitlements.SourceApple,
-		UserID:       tx.AppAccountToken,
-		OriginalTxID: tx.OriginalTransactionID,
-		ProductID:    tx.ProductID,
-		State:        state,
-		ExpiresAt:    expires,
-		OccurredAt:   occurred,
-		Restores:     m.restores,
-		NoRevive:     m.ambiguous && !m.restores,
-		Environment:  env,
+		ID:            p.NotificationUUID,
+		Source:        entitlements.SourceApple,
+		UserID:        tx.AppAccountToken,
+		OriginalTxID:  tx.OriginalTransactionID,
+		TransactionID: tx.TransactionID,
+		ProductID:     tx.ProductID,
+		State:         state,
+		ExpiresAt:     expires,
+		OccurredAt:    occurred,
+		Restores:      m.restores,
+		NoRevive:      m.ambiguous && !m.restores,
+		Environment:   env,
+		AutoRenew:     autoRenew(n),
 	}, nil
 }
 
@@ -202,4 +207,22 @@ func msToTime(ms int64) time.Time {
 		return time.Time{}
 	}
 	return time.UnixMilli(ms).UTC()
+}
+
+// autoRenew reads the renewal setting: renewalInfo.autoRenewStatus when the
+// notification carries renewal info, else the AUTO_RENEW_ENABLED/DISABLED
+// subtype of DID_CHANGE_RENEWAL_STATUS, else unknown (nil).
+func autoRenew(n *Notification) *bool {
+	var v bool
+	switch {
+	case n.Renewal != nil && n.Renewal.AutoRenewStatus != nil:
+		v = *n.Renewal.AutoRenewStatus == 1
+	case n.Payload.NotificationType == "DID_CHANGE_RENEWAL_STATUS" && n.Payload.Subtype == "AUTO_RENEW_ENABLED":
+		v = true
+	case n.Payload.NotificationType == "DID_CHANGE_RENEWAL_STATUS" && n.Payload.Subtype == "AUTO_RENEW_DISABLED":
+		v = false
+	default:
+		return nil
+	}
+	return &v
 }

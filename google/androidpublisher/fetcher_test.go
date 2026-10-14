@@ -74,3 +74,23 @@ func TestAndroidPublisherFetcher_BadExpiry(t *testing.T) {
 	require.ErrorIs(t, err, androidpublisher.ErrBadResponse)
 	assert.NotErrorIs(t, err, google.ErrFetchTransient, "a bad body is not a transport failure")
 }
+
+func TestAndroidPublisherFetcher_AutoRenewingPlan(t *testing.T) {
+	t.Parallel()
+	f := newFetcher(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"subscriptionState":"SUBSCRIPTION_STATE_CANCELED","lineItems":[
+{"productId":"a","expiryTime":"2026-11-14T10:00:00Z","autoRenewingPlan":{"autoRenewEnabled":false}},
+{"productId":"b","expiryTime":"2026-11-14T10:00:00Z","autoRenewingPlan":{"autoRenewEnabled":true}},
+{"productId":"c","expiryTime":"2026-11-14T10:00:00Z","prepaidPlan":{}}]}`))
+	})
+
+	got, err := f.GetV2(context.Background(), "p", "t")
+
+	require.NoError(t, err)
+	require.Len(t, got.LineItems, 3)
+	require.NotNil(t, got.LineItems[0].AutoRenewingPlan)
+	assert.False(t, got.LineItems[0].AutoRenewingPlan.AutoRenewEnabled, "an explicit false is kept, not confused with absent")
+	require.NotNil(t, got.LineItems[1].AutoRenewingPlan)
+	assert.True(t, got.LineItems[1].AutoRenewingPlan.AutoRenewEnabled)
+	assert.Nil(t, got.LineItems[2].AutoRenewingPlan, "a prepaid plan has no auto-renew setting")
+}

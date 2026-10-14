@@ -21,11 +21,14 @@ package httpx
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/tggo/go-entitlements"
+	"github.com/tggo/go-entitlements/google"
 )
 
 var (
@@ -50,6 +53,7 @@ type config struct {
 	auth     func(*http.Request) error
 	log      *slog.Logger
 	insecure bool
+	acker    google.Acknowledger
 }
 
 // Option configures a handler.
@@ -84,6 +88,17 @@ func WithLogger(l *slog.Logger) Option {
 // already authenticates the push. It logs an error when the handler is built.
 func WithInsecureNoAuth() Option { return func(c *config) { c.insecure = true } }
 
+// WithAcknowledger makes the Google handler acknowledge purchases that Google
+// reports as pending, after the entitlement is stored. See NewGoogleHandler.
+// A nil acknowledger is ignored.
+func WithAcknowledger(a google.Acknowledger) Option {
+	return func(c *config) {
+		if a != nil {
+			c.acker = a
+		}
+	}
+}
+
 func newConfig(opts []Option) config {
 	c := config{maxBody: DefaultMaxBodyBytes, log: slog.New(slog.DiscardHandler)}
 	for _, o := range opts {
@@ -117,9 +132,11 @@ func readBody(w http.ResponseWriter, r *http.Request, limit int64, log *slog.Log
 	return body, true
 }
 
-// process runs ev through p, logs the outcome once, and answers per the
-// response policy.
-func process(w http.ResponseWriter, r *http.Request, p Processor, ev entitlements.Event, log *slog.Logger) {
+// process runs ev through p and logs the outcome once. It returns the HTTP
+// status to answer and stored, which is true when the event is safely
+// accounted for (applied, duplicate, stale, or a sandbox purchase the Service
+// is configured to ignore) and false when nothing was stored.
+func process(r *http.Request, p Processor, ev entitlements.Event, log *slog.Logger) (status int, stored bool) {
 	ent, err := p.Process(r.Context(), ev)
 	log = log.With("event", ev.ID, "source", string(ev.Source))
 	switch {
@@ -129,21 +146,54 @@ func process(w http.ResponseWriter, r *http.Request, p Processor, ev entitlement
 			state = string(ent.State)
 		}
 		log.Info("notification applied", "state", state)
+		return http.StatusOK, true
 	case errors.Is(err, entitlements.ErrDuplicate):
 		log.Info("duplicate notification")
+		return http.StatusOK, true
 	case errors.Is(err, entitlements.ErrStale):
 		log.Info("stale notification, not applied")
+		return http.StatusOK, true
 	case errors.Is(err, entitlements.ErrIgnored):
 		log.Info("notification ignored", "reason", err)
+		return http.StatusOK, ev.Sandbox()
 	case errors.Is(err, entitlements.ErrUnsupported):
 		log.Warn("notification not applicable", "error", err)
+		return http.StatusOK, false
 	case errors.Is(err, entitlements.ErrInvalidEvent):
 		// Permanent: the event can never be stored, so redelivery would loop.
 		log.Error("invalid event dropped, acknowledged", "error", err)
+		return http.StatusOK, false
 	default:
 		log.Error("process notification", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		return http.StatusInternalServerError, false
+	}
+}
+
+// respond writes the status chosen by process.
+func respond(w http.ResponseWriter, status int) {
+	if status == http.StatusOK {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	http.Error(w, http.StatusText(status), status)
+}
+
+// recoverPanic turns a panic in a parser, processor, store or acknowledger
+// into a 500 with an error log carrying the panic value and stack, instead of
+// letting net/http drop the connection (which a push service retries as an
+// unexplained failure). Use it as a deferred call at the top of ServeHTTP.
+//
+// A deterministic panic is a poison message: the push is redelivered until its
+// retention ends. Configure a dead-letter topic and a maximum delivery count
+// on the push subscription.
+func recoverPanic(w http.ResponseWriter, log *slog.Logger) {
+	rec := recover()
+	if rec == nil {
+		return
+	}
+	if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+		panic(rec) // net/http's own way to abort a response; not ours to swallow
+	}
+	log.Error("panic while handling notification", "panic", fmt.Sprint(rec), "stack", string(debug.Stack()))
+	http.Error(w, "internal error", http.StatusInternalServerError)
 }

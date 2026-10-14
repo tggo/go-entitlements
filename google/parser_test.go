@@ -84,19 +84,20 @@ func TestParser_UnknownStateUnsupported(t *testing.T) {
 	assert.ErrorIs(t, err, entitlements.ErrUnsupported)
 }
 
-func TestParser_LinkedTokenUpgradePicksLatestExpiry(t *testing.T) {
+func TestParser_LinkedTokenUpgradeWithTwoItems(t *testing.T) {
 	t.Parallel()
-	f := mocks.NewMockSubscriptionsFetcher(t)
-	f.EXPECT().GetV2(mock.Anything, pkg, "new-token").Return(fetchedSub(t, "sub_linked_upgrade.json"), nil)
+	f := fetcherFor(t, fetchMap{"new-token": fetchedSub(t, "sub_linked_upgrade.json")},
+		map[string]error{"old-token": google.ErrPurchaseNotFound})
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription_upgrade.json"))
 
-	ev, err := newParser(t, f).Parse(context.Background(), body)
+	evs, err := newParser(t, f).ParseAll(context.Background(), body)
 
 	require.NoError(t, err)
-	assert.Equal(t, "new-token", ev.OriginalTxID)
-	assert.Equal(t, "old-token", ev.SupersedesTxID)
-	assert.Equal(t, "premium.yearly", ev.ProductID)
-	assert.Equal(t, time.Date(2027, 10, 14, 10, 0, 0, 0, time.UTC), ev.ExpiresAt)
+	m := byKey(evs)
+	require.Len(t, evs, 2, "monthly and yearly are two line items, so two entitlements")
+	assert.Equal(t, "old-token", m["new-token#premium.monthly"].SupersedesTxID)
+	assert.Equal(t, time.Date(2026, 11, 14, 10, 0, 0, 0, time.UTC), m["new-token#premium.monthly"].ExpiresAt)
+	assert.Equal(t, time.Date(2027, 10, 14, 10, 0, 0, 0, time.UTC), m["new-token#premium.yearly"].ExpiresAt)
 }
 
 func TestParser_NoLineItemsRefusedWhenGranting(t *testing.T) {

@@ -37,8 +37,20 @@ the answer — a guessed criterion is worse than none.
 - an active or grace event without an expiry date → `ErrNoExpiry` (200 + error log), never open-ended access
 - TEST, ONE_TIME_CHARGE, RENEWAL_EXTENSION, REFUND_DECLINED, PRICE_INCREASE, PRICE_CHANGE, CONSUMPTION_REQUEST, METADATA_UPDATE, MIGRATION, EXTERNAL_PURCHASE_TOKEN, RESCIND_CONSENT, CHILD_CONSENT_REVOKED → ignored with HTTP 200; REFUND/REVOKE of a non-subscription transaction → ignored; unknown types → 200 and a log line
 - a missing `appAccountToken` yields an event with empty UserID, keyed by `originalTransactionId`, applied with a warning; `ListByUser("")` returns nothing
-- a refund of an older transaction does not end a chain whose newer transaction is active
-**Verified:** real SUBSCRIBED → DID_CHANGE_RENEWAL_STATUS → EXPIRED chain from fridge.menu ends `expired`, 2026-10-14 (private fixtures, not in CI); domain probes ported as `apple_domain_test.go`, 2026-10-15.
+- `autoRenewStatus` (renewal info), or the AUTO_RENEW_ENABLED/DISABLED subtype, sets `Event.AutoRenew`; absent means unknown and never overwrites the last known value
+- a refund names one transaction (`transactionId`) and is recorded in `Entitlement.RefundedTransactions`: it ends the chain only if that transaction is the one granting access; a refund of an older transaction leaves a running chain alone, and a renewal (a different, unrefunded transaction that outlasts the refunded one) delivered after the refund still applies even if it was signed earlier; a late event for a refunded transaction is stale; REFUND_REVERSED removes it from the list
+**Verified:** real SUBSCRIBED → DID_CHANGE_RENEWAL_STATUS → EXPIRED chain from fridge.menu ends `expired`, 2026-10-14 (private fixtures, not in CI); refund/renewal in either arrival order in `refund_order_test.go` and the `storetest` suite, 2026-10-15; domain probes ported as `apple_domain_test.go`, 2026-10-15.
+
+## Core — user attribution and erasure
+**What:** every chain can get exactly one owner, and a user's data can be erased.
+**DoD:**
+- an event without a user ID takes the user of the chain it supersedes, else the `WithUserResolver` answer (an error fails `Process` so the store retries; an empty answer applies it unattributed)
+- `Service.LinkUser(source, originalTxID, userID)` attaches a user to a chain without one; repeating it changes nothing; a chain owned by someone else → `ErrUserConflict`, unknown chain → `ErrNotFound`; two concurrent links of different users: exactly one wins
+- a chain's owner never changes: a later event with no user or with another user keeps it (the other-user case is logged as a warning) while its state still applies
+- `WithOnChange` is called after each committed change (new chain, applied event, retired superseded chain, user link) with before/after; not for duplicates, stale or ignored events; a panic in it is recovered and logged
+- `Service.ForgetUser(userID)` deletes that user's entitlements and, in Postgres, nulls the stored raw payloads of their chains; event IDs stay, so a redelivered webhook is still a duplicate; an empty user ID is an error
+- `Entitlement.AutoRenew` round-trips through every store; nil means never reported
+**Verified:** `service_users_test.go`, the `storetest` suite on memory and Postgres, Postgres `DeleteUser` raw-payload test, 2026-10-15.
 
 ## Sandbox and test purchases
 **What:** a free test purchase never unlocks production access by default.
@@ -57,8 +69,14 @@ the answer — a guessed criterion is worse than none.
 - `linkedPurchaseToken` retires the old chain; a voided subscription → refunded; a voided one-time product or a partial refund is ignored
 - `testPurchase` sets `Event.Environment` to GoogleTest; `WithRejectTestPurchases()` rejects it
 - Play API 404/410 → 200 (no retry), 401/403 → 500 with an error log, 5xx/timeout → 500
+- a subscription with add-ons yields one event per line item (`purchaseToken#productId`); a single-item purchase keeps the plain token key and `messageId`; items without `expiryTime` grant nothing; a lapsed add-on yields no event
+- `linkedPurchaseToken` is followed (at most 4 tokens) so every replaced token and every item of it is retired; a transient failure fetching a replaced token retries the push
+- `Event.AutoRenew` comes from each line item's `autoRenewingPlan.autoRenewEnabled` (nil for prepaid or absent plans, never false by default)
+- `Parser.ParseToken` syncs from a purchase token with deterministic, token-free event IDs and an `OccurredAt` that cannot beat a newer push
+- the HTTP handlers turn a panic in the parser, processor, store or acknowledger into a 500 with a stack in the log
+- `httpx.WithAcknowledger` acknowledges pending, access-granting purchases only after the entitlement is stored; transient failures answer 500 and the duplicate redelivery acknowledges again
 - importing `google` or `httpx` pulls no `google.golang.org/api`; the SDK lives in `google/androidpublisher` and `httpx/pubsubauth`
-**Verified:** fixtures from Google docs and public issues only; no live Play traffic yet.
+**Verified:** fixtures from Google docs and public issues only; no live Play traffic yet. Acknowledge flow: `httpx/ack_test.go`, `google/ack_test.go`, `google/androidpublisher/ack_test.go` (a local fake of the Play API, not the live one).
 
 ## Core — ordering, idempotency, storage
 **What:** `Service.Process` applies each event at most once and never lets an older event overwrite a newer one.
@@ -81,3 +99,31 @@ the answer — a guessed criterion is worse than none.
 - 500: storage or transient fetch errors
 - `pubsubauth.New` refuses an empty audience or service account email
 **Verified:** e2e integration test (HTTP → Service → Postgres), 2026-10-14.
+
+## Apple — Server API client (apple/serverapi)
+**What:** `serverapi.Client` calls the App Store Server API (statuses, transaction history, transaction info, order lookup, test notification, notification history); every signed value is verified with `apple.Verifier`.
+**DoD:**
+- each request carries a fresh ES256 JWT (kid, iss, iat, exp at most 60 min, aud appstoreconnect-v1, bid); the key and tokens never appear in logs, errors or fmt output
+- a signed value of another bundle ID or environment, or with a bad signature, is refused (`ErrIdentityMismatch` / `ErrInvalidSignature`); nothing partially verified is returned
+- 429, 5xx, transport errors and Apple's "try again" codes are retried with backoff; Retry-After is read as UNIX ms (also seconds / HTTP date); a wait over 30 s is returned as `ErrRateLimited`, not slept
+- Apple errors are `*APIError`; every 404 matches `entitlements.ErrNotFound`
+- paged listings stop on a repeated cursor instead of looping
+**Verified:** httptest tests with a generated Apple CA, 2026-10-15; live Sandbox for menu.fridge.recipebox (build tag `live`): TEST notification verified, 4 history records verified, 2026-10-15.
+
+## Apple — Reconcile and history replay
+**What:** `Reconcile` repairs a lost webhook from Get All Subscription Statuses; `ReplayNotificationHistory` re-feeds notifications Apple says it sent.
+**DoD:**
+- state from status 1..5 (grace expiry is the later of expiresDate and gracePeriodExpiresDate; 5 is revoked for Family Sharing, else refunded); an active/grace snapshot without its date is `apple.ErrNoExpiry`, never open-ended access
+- OccurredAt is Apple's signedDate, so a snapshot cannot overwrite a newer webhook and an older webhook cannot undo a snapshot
+- a chain whose stored state already matches is skipped, so repeated runs write nothing; event IDs are deterministic
+- a snapshot in a live state may lift a refund the Service still holds (missed REFUND_REVERSED)
+- replay goes through the caller's parser, oldest first; already-delivered notifications are duplicates, older-than-stored are stale; unverifiable records are counted Failed
+**Verified:** unit tests incl. ordering races, 2026-10-15; live Sandbox reconcile applied then unchanged, replay applied 3 / ignored 1 / failed 0, 2026-10-15.
+
+## Apple — refund consumption responses
+**What:** `SendConsumptionInfo` (V2) and `NewConsumptionHandler` answer CONSUMPTION_REQUEST.
+**DoD:**
+- nothing is sent unless `CustomerConsented` is true; the zero value is never sent
+- invalid combinations (undelivered with a percentage, percentage on a subscription, prorated without a percentage) are refused before any request
+- the handler answers 200 when sent, not consented, or past the 12 h deadline; 500 when the responder or Apple failed inside the deadline (production Apple redelivers); 401 bad signature; every other notification reaches the wrapped handler unchanged
+**Verified:** unit tests with a fake App Store, 2026-10-15; not called against the real API.

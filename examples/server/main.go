@@ -91,7 +91,8 @@ func run(log *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		parser, err := google.NewParser(androidpublisher.NewFetcher(svcPlay), pkg)
+		fetcher := androidpublisher.NewFetcher(svcPlay)
+		parser, err := google.NewParser(fetcher, pkg)
 		if err != nil {
 			return err
 		}
@@ -103,7 +104,8 @@ func run(log *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		h, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(log), httpx.WithPushAuthenticator(auth))
+		h, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(log),
+			httpx.WithPushAuthenticator(auth), httpx.WithAcknowledger(fetcher))
 		if err != nil {
 			return err
 		}

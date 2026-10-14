@@ -29,43 +29,39 @@ func TestRejectTestPurchases_RealPurchaseStillAccepted(t *testing.T) {
 
 func TestLineItemSelection(t *testing.T) {
 	t.Parallel()
-	soon, later := clockNow.Add(24*time.Hour), clockNow.Add(48*time.Hour)
+	soon := clockNow.Add(24 * time.Hour)
 	cases := map[string]struct {
 		sub         *google.SubscriptionPurchaseV2
 		wantProduct string
 		wantExpiry  time.Time
 	}{
-		"zero-expiry item first never wins": {
+		"zero-expiry item (pending replacement) never wins": {
 			sub:         activeItems(google.LineItem{ProductID: "replacement"}, google.LineItem{ProductID: "current", ExpiryTime: soon}),
 			wantProduct: "current", wantExpiry: soon,
 		},
-		"latest expiry wins regardless of order, later first": {
-			sub:         activeItems(google.LineItem{ProductID: "b", ExpiryTime: later}, google.LineItem{ProductID: "a", ExpiryTime: soon}),
-			wantProduct: "b", wantExpiry: later,
+		"zero-expiry item listed last": {
+			sub:         activeItems(google.LineItem{ProductID: "current", ExpiryTime: soon}, google.LineItem{ProductID: "replacement"}),
+			wantProduct: "current", wantExpiry: soon,
 		},
-		"latest expiry wins regardless of order, later last": {
-			sub:         activeItems(google.LineItem{ProductID: "a", ExpiryTime: soon}, google.LineItem{ProductID: "b", ExpiryTime: later}),
-			wantProduct: "b", wantExpiry: later,
-		},
-		"equal expiries keep the first": {
-			sub:         activeItems(google.LineItem{ProductID: "a", ExpiryTime: soon}, google.LineItem{ProductID: "b", ExpiryTime: soon}),
-			wantProduct: "a", wantExpiry: soon,
-		},
-		"winner without product keeps the notification subscriptionId": {
+		"item without product takes the notification subscriptionId": {
 			sub: activeItems(google.LineItem{ExpiryTime: soon}), wantProduct: "premium.monthly", wantExpiry: soon,
 		},
-		"no expiry anywhere, non-granting: first item's product": {
+		"non-granting, one item without expiry": {
 			sub: &google.SubscriptionPurchaseV2{
 				SubscriptionState: google.StateExpired,
-				LineItems:         []google.LineItem{{ProductID: "first"}, {ProductID: "second"}},
+				LineItems:         []google.LineItem{{ProductID: "first"}},
 			},
 			wantProduct: "first",
 		},
-		"no expiry anywhere, first item without product": {
+		"non-granting, item without product": {
 			sub: &google.SubscriptionPurchaseV2{
 				SubscriptionState: google.StateExpired,
-				LineItems:         []google.LineItem{{}, {ProductID: "second"}},
+				LineItems:         []google.LineItem{{}},
 			},
+			wantProduct: "premium.monthly",
+		},
+		"non-granting, no items": {
+			sub:         &google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired},
 			wantProduct: "premium.monthly",
 		},
 	}
@@ -128,11 +124,13 @@ func TestVoided_MixedOrderIDsAcrossItems(t *testing.T) {
 			f := mocks.NewMockSubscriptionsFetcher(t)
 			f.EXPECT().GetV2(mock.Anything, pkg, "T").Return(sub, nil)
 
-			ev, err := newParser(t, f, atClock()).Parse(context.Background(), voidedBody(t, "T", orderID, clockNow.UnixMilli()))
+			evs, err := newParser(t, f, atClock()).ParseAll(context.Background(), voidedBody(t, "T", orderID, clockNow.UnixMilli()))
 
 			if wantRefund {
 				require.NoError(t, err)
-				assert.Equal(t, entitlements.StateRefunded, ev.State)
+				for _, ev := range evs {
+					assert.Equal(t, entitlements.StateRefunded, ev.State)
+				}
 			} else {
 				assert.ErrorIs(t, err, entitlements.ErrIgnored)
 			}

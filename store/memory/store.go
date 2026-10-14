@@ -41,6 +41,8 @@ func New() *Store {
 
 var _ entitlements.Store = (*Store)(nil)
 
+func clone(e entitlements.Entitlement) entitlements.Entitlement { return e.Clone() }
+
 func recordable(err error) bool {
 	return errors.Is(err, entitlements.ErrStale) ||
 		errors.Is(err, entitlements.ErrIgnored) ||
@@ -62,7 +64,7 @@ func (s *Store) Apply(ctx context.Context, ev entitlements.Event, fn func(cur *e
 	k := key{ev.Source, ev.OriginalTxID}
 	var cur *entitlements.Entitlement
 	if e, ok := s.items[k]; ok {
-		c := e
+		c := clone(e)
 		cur = &c
 	}
 	next, err := fn(cur)
@@ -76,8 +78,8 @@ func (s *Store) Apply(ctx context.Context, ev entitlements.Event, fn func(cur *e
 	if next == nil {
 		return cur, nil
 	}
-	s.items[k] = *next
-	out := *next
+	s.items[k] = clone(*next)
+	out := clone(*next)
 	return &out, nil
 }
 
@@ -92,6 +94,7 @@ func (s *Store) Get(ctx context.Context, source entitlements.Source, originalTxI
 	if !ok {
 		return nil, entitlements.ErrNotFound
 	}
+	e = clone(e)
 	return &e, nil
 }
 
@@ -109,11 +112,31 @@ func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.E
 	var out []entitlements.Entitlement
 	for _, e := range s.items {
 		if e.UserID == userID {
-			out = append(out, e)
+			out = append(out, clone(e))
 		}
 	}
 	slices.SortFunc(out, func(a, b entitlements.Entitlement) int {
 		return cmp.Or(cmp.Compare(a.Source, b.Source), cmp.Compare(a.OriginalTxID, b.OriginalTxID))
 	})
 	return out, nil
+}
+
+// DeleteUser implements entitlements.Store. The processed event IDs stay.
+func (s *Store) DeleteUser(ctx context.Context, userID string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if userID == "" {
+		return 0, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := 0
+	for k, e := range s.items {
+		if e.UserID == userID {
+			delete(s.items, k)
+			n++
+		}
+	}
+	return n, nil
 }

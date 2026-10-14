@@ -240,10 +240,11 @@ func TestSupersedeOnlyWhenNewStateGrantsAccess(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			ev, err := parseWith(t, &google.SubscriptionPurchaseV2{
+			f := fetcherFor(t, fetchMap{"tok-1": {
 				SubscriptionState: tc.state, LinkedPurchaseToken: "old-token",
 				LineItems: []google.LineItem{{ProductID: "p", ExpiryTime: exp}},
-			}, atClock())
+			}}, map[string]error{"old-token": google.ErrPurchaseNotFound})
+			ev, err := newParser(t, f, atClock()).Parse(context.Background(), subBody(t))
 			require.NoError(t, err)
 			assert.Equal(t, tc.supersedes, ev.SupersedesTxID)
 		})
