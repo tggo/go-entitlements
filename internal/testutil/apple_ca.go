@@ -128,14 +128,18 @@ func (ca *AppleCA) Sign(t testing.TB, claims any) string {
 // (to simulate a forged signature).
 func (ca *AppleCA) SignWithKey(t testing.TB, key *ecdsa.PrivateKey, claims any) string {
 	t.Helper()
-	hdr := map[string]any{
-		"alg": "ES256",
-		"x5c": []string{
-			base64.StdEncoding.EncodeToString(ca.Leaf.Raw),
-			base64.StdEncoding.EncodeToString(ca.Intermediate.Raw),
-			base64.StdEncoding.EncodeToString(ca.Root.Raw),
-		},
+	return SignChain(t, key, [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw, ca.Root.Raw}, claims)
+}
+
+// SignChain produces an ES256 JWS signed with key and the given DER
+// certificates as the x5c header.
+func SignChain(t testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) string {
+	t.Helper()
+	certs := make([]string, len(x5c))
+	for i, der := range x5c {
+		certs[i] = base64.StdEncoding.EncodeToString(der)
 	}
+	hdr := map[string]any{"alg": "ES256", "x5c": certs}
 	hb, err := json.Marshal(hdr)
 	if err != nil {
 		t.Fatal(err)

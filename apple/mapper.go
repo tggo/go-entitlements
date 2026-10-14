@@ -15,6 +15,12 @@ import (
 //     apps link users to originalTransactionId themselves, so the caller must
 //     resolve the user from Event.OriginalTxID (the real key). Parse has no
 //     context, so there is no resolver hook.
+//   - REFUND_REVERSED restores the chain (Event.Restores, state from the
+//     transaction like DID_CHANGE_RENEWAL_STATUS). RENEWAL_EXTENDED is active
+//     with the new expiresDate. RENEWAL_EXTENSION (SUMMARY/FAILURE) is ignored.
+//   - REFUND carries the refunded transaction's expiresDate; Apply keeps the
+//     chain alive if a newer transaction already runs past it.
+//   - Event.Environment is the transaction's environment (Production, Sandbox, ...).
 //   - ONE_TIME_CHARGE returns ErrIgnored (non-subscription purchase).
 //   - OriginalTxID = originalTransactionId,
 //     ExpiresAt = expiresDate, OccurredAt = signedDate (outer payload),
@@ -33,6 +39,10 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 	}
 	p := n.Payload
 	switch p.NotificationType {
+	case "RENEWAL_EXTENSION":
+		// SUMMARY (bulk result, no per-subscriber data) and FAILURE carry no
+		// new expiry; the per-subscriber success is RENEWAL_EXTENDED.
+		return entitlements.Event{}, fmt.Errorf("%w: RENEWAL_EXTENSION/%s has no subscription state", entitlements.ErrIgnored, p.Subtype)
 	case "TEST":
 		return entitlements.Event{}, entitlements.ErrIgnored
 	case "ONE_TIME_CHARGE":
@@ -46,7 +56,7 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 		}
 		return entitlements.Event{}, fmt.Errorf("%w: ONE_TIME_CHARGE for %q is a non-subscription purchase, out of scope", entitlements.ErrIgnored, typ)
 	}
-	state, derive, err := mapState(p.NotificationType, p.Subtype)
+	m, err := mapType(p.NotificationType, p.Subtype)
 	if err != nil {
 		return entitlements.Event{}, err
 	}
@@ -54,15 +64,19 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 	if tx == nil {
 		return entitlements.Event{}, fmt.Errorf("apple: %s without signedTransactionInfo", p.NotificationType)
 	}
+	env := tx.Environment
+	if env == "" && p.Data != nil {
+		env = p.Data.Environment
+	}
 	occurred := msToTime(p.SignedDate)
 	expires := msToTime(tx.ExpiresDate)
-	if derive {
-		state = entitlements.StateExpired
+	if m.derive {
+		m.state = entitlements.StateExpired
 		if expires.After(occurred) {
-			state = entitlements.StateActive
+			m.state = entitlements.StateActive
 		}
 	}
-	if state == entitlements.StateGrace && n.Renewal != nil {
+	if m.state == entitlements.StateGrace && n.Renewal != nil {
 		if g := msToTime(n.Renewal.GracePeriodExpiresDate); g.After(expires) {
 			expires = g
 		}
@@ -73,34 +87,46 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 		UserID:       tx.AppAccountToken,
 		OriginalTxID: tx.OriginalTransactionID,
 		ProductID:    tx.ProductID,
-		State:        state,
+		State:        m.state,
 		ExpiresAt:    expires,
 		OccurredAt:   occurred,
+		Restores:     m.restores,
+		Environment:  env,
+		Sandbox:      env == "Sandbox" || env == "Xcode" || env == "LocalTesting",
 	}, nil
 }
 
-// mapState returns the target state; derive means "compute from the transaction".
-func mapState(typ, subtype string) (state entitlements.State, derive bool, err error) {
+type mapping struct {
+	state    entitlements.State
+	derive   bool // compute active/expired from the transaction's expiresDate vs signedDate
+	restores bool
+}
+
+func mapType(typ, subtype string) (mapping, error) {
+	active := mapping{state: entitlements.StateActive}
 	switch typ {
 	case "SUBSCRIBED", "DID_RENEW", "OFFER_REDEEMED", "DID_CHANGE_RENEWAL_PREF":
-		return entitlements.StateActive, false, nil
+		return active, nil
 	case "DID_FAIL_TO_RENEW":
 		if subtype == "GRACE_PERIOD" {
-			return entitlements.StateGrace, false, nil
+			return mapping{state: entitlements.StateGrace}, nil
 		}
-		return entitlements.StateBillingRetry, false, nil
+		return mapping{state: entitlements.StateBillingRetry}, nil
 	case "GRACE_PERIOD_EXPIRED":
-		return entitlements.StateBillingRetry, false, nil
+		return mapping{state: entitlements.StateBillingRetry}, nil
 	case "EXPIRED":
-		return entitlements.StateExpired, false, nil
+		return mapping{state: entitlements.StateExpired}, nil
 	case "REFUND":
-		return entitlements.StateRefunded, false, nil
+		// Names one transaction; Apply decides whether it ends the chain.
+		return mapping{state: entitlements.StateRefunded}, nil
 	case "REVOKE":
-		return entitlements.StateRevoked, false, nil
-	case "DID_CHANGE_RENEWAL_STATUS":
-		return "", true, nil
+		return mapping{state: entitlements.StateRevoked}, nil
+	case "DID_CHANGE_RENEWAL_STATUS", "RENEWAL_EXTENDED":
+		return mapping{derive: true}, nil
+	case "REFUND_REVERSED":
+		return mapping{derive: true, restores: true}, nil
 	}
-	return "", false, fmt.Errorf("%w: apple notificationType %q subtype %q", entitlements.ErrUnsupported, typ, subtype)
+	return mapping{}, fmt.Errorf("%w: apple notificationType %q subtype %q", entitlements.ErrUnsupported, typ, subtype)
 }
 
 func msToTime(ms int64) time.Time {

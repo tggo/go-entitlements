@@ -42,7 +42,20 @@ type Event struct {
 	State          State
 	ExpiresAt      time.Time
 	OccurredAt     time.Time // signedDate / eventTimeMillis — ordering key
-	Raw            []byte
+	// Restores marks an event that lifts a refunded/revoked chain (Apple
+	// REFUND_REVERSED). Without it only an active event can leave a terminal
+	// state; with it any non-terminal state can, if strictly newer.
+	Restores bool
+	// Sandbox marks a non-production purchase: Apple environment
+	// Sandbox/Xcode/LocalTesting, or Google testPurchase. Consumers should
+	// not grant paid access for it in production.
+	Sandbox bool
+	// Environment is the store environment the event came from ("Production",
+	// "Sandbox", "Xcode", "LocalTesting" for Apple). Empty if unknown.
+	// Verifiers can pin one; consumers sharing a store between environments
+	// should check it before calling Service.Process.
+	Environment string
+	Raw         []byte
 }
 
 // Entitlement is the current state of one subscription chain.
@@ -55,6 +68,7 @@ type Entitlement struct {
 	ExpiresAt    time.Time
 	UpdatedAt    time.Time // OccurredAt of the last applied event
 	Version      int64
+	Sandbox      bool // from the last applied event, see Event.Sandbox
 }
 
 // Active reports whether the entitlement grants access at now.

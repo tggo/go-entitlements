@@ -26,9 +26,11 @@ type googleHandler struct {
 
 // NewGoogleHandler returns the handler for the Pub/Sub push endpoint that
 // receives Google Play RTDN. Malformed pushes answer 400, a failed
-// authenticator 401. A notification for another package name is acknowledged
-// (200, logged): redelivery cannot fix it. Any other parse error comes from
-// fetching the subscription state and answers 500 so Pub/Sub redelivers.
+// authenticator 401. A notification for another package name or for a purchase
+// token the Play API reports as 404/410 is acknowledged (200, logged):
+// redelivery cannot fix it. A 401/403 from the Play API is a configuration
+// error: 500 with an error log that says so. Any other fetch failure (5xx,
+// 429, timeouts) answers 500 so Pub/Sub redelivers.
 func NewGoogleHandler(parser GoogleParser, svc Processor, logger *zap.Logger, opts ...Option) http.Handler {
 	if logger == nil {
 		logger = zap.NewNop()
@@ -58,6 +60,15 @@ func (h *googleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, google.ErrPackageMismatch):
 		h.log.Warn("notification for another package, acknowledged", zap.Error(err))
 		w.WriteHeader(http.StatusOK)
+	case errors.Is(err, google.ErrPurchaseNotFound):
+		h.log.Warn("purchase token unknown or expired", zap.Error(err), zap.String("action", "acknowledged"))
+		w.WriteHeader(http.StatusOK)
+	case errors.Is(err, google.ErrFetchConfig):
+		h.log.Error("play api credentials or permissions rejected", zap.Error(err))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	case errors.Is(err, google.ErrFetchTransient):
+		h.log.Error("play api transient failure", zap.Error(err), zap.String("action", "pubsub will redeliver"))
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	case errors.Is(err, google.ErrMalformed):
 		h.log.Error("rejected push: malformed", zap.Error(err), zap.String("remote", r.RemoteAddr))
 		http.Error(w, "bad request", http.StatusBadRequest)

@@ -1,5 +1,3 @@
-// Package google decodes Google Play Real-Time Developer Notifications
-// delivered over Pub/Sub push and maps them to entitlements.Event.
 package google
 
 import (
@@ -107,15 +105,34 @@ type SubscriptionPurchaseV2 struct {
 	LineItems                  []LineItem                  `json:"lineItems,omitempty"`
 	ExternalAccountIdentifiers *ExternalAccountIdentifiers `json:"externalAccountIdentifiers,omitempty"`
 	AcknowledgementState       string                      `json:"acknowledgementState,omitempty"`
+	// TestPurchase is set when Google reports the purchase as a license-tester
+	// purchase (the API sends an empty "testPurchase" object).
+	TestPurchase bool `json:"-"`
+}
+
+// UnmarshalJSON maps the presence of "testPurchase" to TestPurchase.
+func (s *SubscriptionPurchaseV2) UnmarshalJSON(b []byte) error {
+	type plain SubscriptionPurchaseV2
+	aux := struct {
+		*plain
+		TestPurchase json.RawMessage `json:"testPurchase"`
+	}{plain: (*plain)(s)}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	s.TestPurchase = len(aux.TestPurchase) > 0 && string(aux.TestPurchase) != "null"
+	return nil
 }
 
 // LineItem is one product in a subscription purchase.
 type LineItem struct {
-	ProductID  string    `json:"productId"`
+	ProductID string `json:"productId"`
+	// ExpiryTime is zero when Google omits it (e.g. a deferred replacement item).
 	ExpiryTime time.Time `json:"expiryTime"`
 }
 
 // ExternalAccountIdentifiers carries the developer-supplied account id.
 type ExternalAccountIdentifiers struct {
 	ObfuscatedExternalAccountID string `json:"obfuscatedExternalAccountId,omitempty"`
+	ObfuscatedExternalProfileID string `json:"obfuscatedExternalProfileId,omitempty"`
 }

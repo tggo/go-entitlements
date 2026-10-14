@@ -46,12 +46,14 @@ func AppleRootCAG3Pool() *x509.CertPool {
 	return defaultPool
 }
 
-// Verifier verifies Apple-signed JWS values (ES256 with an x5c chain).
+// Verifier verifies Apple-signed JWS values (ES256 with an x5c chain) and
+// pins them to one app (bundle ID) and, optionally, one environment.
 type Verifier struct {
 	roots       *x509.CertPool
 	timeFn      func() time.Time
 	bundleID    string
 	environment string
+	anyBundle   bool
 }
 
 // Option configures a Verifier.
@@ -67,18 +69,29 @@ func WithRootPool(p *x509.CertPool) Option { return func(v *Verifier) { v.roots 
 // because signedDate is attacker-controlled until the signature is checked.
 func WithTimeFn(fn func() time.Time) Option { return func(v *Verifier) { v.timeFn = fn } }
 
-// WithBundleID rejects notifications whose data.bundleId differs.
-func WithBundleID(id string) Option { return func(v *Verifier) { v.bundleID = id } }
-
-// WithEnvironment rejects notifications whose data.environment differs
-// ("Production" or "Sandbox").
+// WithEnvironment rejects notifications (outer and nested) whose environment
+// differs: "Production" or "Sandbox". Without it both are accepted, nested
+// payloads must still match the outer notification's environment, and the
+// resulting Event.Environment tells the caller which one it was. A production
+// service that stores both should pin "Production" (sandbox purchases are free).
 func WithEnvironment(env string) Option { return func(v *Verifier) { v.environment = env } }
 
-// NewVerifier builds a Verifier. Without options it trusts only Apple Root CA - G3.
-func NewVerifier(opts ...Option) *Verifier {
-	v := &Verifier{}
+// WithInsecureAnyBundle lets NewVerifier accept an empty bundle ID and skip
+// the bundle check. Any Apple-signed notification from any app then passes
+// signature verification; only use it in tools, never in a webhook.
+func WithInsecureAnyBundle() Option { return func(v *Verifier) { v.anyBundle = true } }
+
+// NewVerifier builds a Verifier for one app. bundleID is required: it is
+// compared with the bundle ID of the notification and of the nested
+// transaction and renewal info. Without WithRootPool it trusts only
+// Apple Root CA - G3.
+func NewVerifier(bundleID string, opts ...Option) (*Verifier, error) {
+	v := &Verifier{bundleID: bundleID}
 	for _, o := range opts {
 		o(v)
+	}
+	if v.bundleID == "" && !v.anyBundle {
+		return nil, errors.New("apple: bundle ID is required (use WithInsecureAnyBundle to skip the check)")
 	}
 	if v.roots == nil {
 		v.roots = AppleRootCAG3Pool()
@@ -86,7 +99,7 @@ func NewVerifier(opts ...Option) *Verifier {
 	if v.timeFn == nil {
 		v.timeFn = time.Now
 	}
-	return v
+	return v, nil
 }
 
 func invalid(format string, args ...any) error {
@@ -202,20 +215,21 @@ func (v *Verifier) VerifyNotification(body []byte) (*Notification, error) {
 	if err := v.Verify(rb.SignedPayload, &n.Payload); err != nil {
 		return nil, err
 	}
+	outerEnv, err := v.checkOuterIdentity(&n.Payload)
+	if err != nil {
+		return nil, err
+	}
 	d := n.Payload.Data
 	if d == nil {
 		return n, nil
-	}
-	if v.bundleID != "" && d.BundleID != v.bundleID {
-		return nil, invalid("bundleId %q, want %q", d.BundleID, v.bundleID)
-	}
-	if v.environment != "" && d.Environment != v.environment {
-		return nil, invalid("environment %q, want %q", d.Environment, v.environment)
 	}
 	if d.SignedTransactionInfo != "" {
 		n.Transaction = &JWSTransactionDecodedPayload{}
 		if err := v.Verify(d.SignedTransactionInfo, n.Transaction); err != nil {
 			return nil, fmt.Errorf("signedTransactionInfo: %w", err)
+		}
+		if err := v.checkNested("signedTransactionInfo", n.Transaction.BundleID, n.Transaction.Environment, outerEnv); err != nil {
+			return nil, err
 		}
 	}
 	if d.SignedRenewalInfo != "" {
@@ -223,6 +237,58 @@ func (v *Verifier) VerifyNotification(body []byte) (*Notification, error) {
 		if err := v.Verify(d.SignedRenewalInfo, n.Renewal); err != nil {
 			return nil, fmt.Errorf("signedRenewalInfo: %w", err)
 		}
+		// Renewal info has no bundleId field; only its environment is checked.
+		if err := v.checkNested("signedRenewalInfo", v.bundleID, n.Renewal.Environment, outerEnv); err != nil {
+			return nil, err
+		}
 	}
 	return n, nil
+}
+
+type identity struct {
+	BundleID    string `json:"bundleId"`
+	Environment string `json:"environment"`
+}
+
+// checkOuterIdentity finds the notification's bundle ID and environment —
+// in data, summary, externalPurchaseToken or appData, depending on the
+// type — and compares them with the pins. It returns the outer environment.
+func (v *Verifier) checkOuterIdentity(p *NotificationPayload) (string, error) {
+	var id identity
+	found := false
+	if p.Data != nil {
+		id, found = identity{p.Data.BundleID, p.Data.Environment}, true
+	}
+	for _, raw := range []json.RawMessage{p.Summary, p.ExternalPurchaseToken, p.AppData} {
+		if found || len(raw) == 0 {
+			continue
+		}
+		if err := json.Unmarshal(raw, &id); err != nil {
+			return "", invalid("notification identity: %v", err)
+		}
+		found = true
+	}
+	if v.bundleID != "" && (!found || id.BundleID != v.bundleID) {
+		return "", invalid("bundleId %q, want %q", id.BundleID, v.bundleID)
+	}
+	if v.environment != "" && id.Environment != v.environment {
+		return "", invalid("environment %q, want %q", id.Environment, v.environment)
+	}
+	return id.Environment, nil
+}
+
+// checkNested applies the same pins to a nested payload and requires its
+// environment to equal the outer one (a sandbox transaction cannot ride
+// inside a production notification).
+func (v *Verifier) checkNested(what, bundleID, env, outerEnv string) error {
+	if v.bundleID != "" && bundleID != v.bundleID {
+		return invalid("%s bundleId %q, want %q", what, bundleID, v.bundleID)
+	}
+	if v.environment != "" && env != v.environment {
+		return invalid("%s environment %q, want %q", what, env, v.environment)
+	}
+	if env != "" && outerEnv != "" && env != outerEnv {
+		return invalid("%s environment %q differs from notification environment %q", what, env, outerEnv)
+	}
+	return nil
 }

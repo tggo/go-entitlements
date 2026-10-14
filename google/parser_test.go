@@ -94,10 +94,21 @@ func TestParser_LinkedTokenUpgradePicksLatestExpiry(t *testing.T) {
 	assert.Equal(t, time.Date(2027, 10, 14, 10, 0, 0, 0, time.UTC), ev.ExpiresAt)
 }
 
-func TestParser_NoLineItemsKeepsNotificationProduct(t *testing.T) {
+func TestParser_NoLineItemsRefusedWhenGranting(t *testing.T) {
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").
 		Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateActive}, nil)
+	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
+
+	_, err := google.NewParser(f).Parse(context.Background(), body)
+
+	assert.ErrorIs(t, err, google.ErrNoExpiry)
+}
+
+func TestParser_NoLineItemsKeepsNotificationProductWhenNotGranting(t *testing.T) {
+	f := mocks.NewMockSubscriptionsFetcher(t)
+	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").
+		Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired}, nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
 	ev, err := google.NewParser(f).Parse(context.Background(), body)

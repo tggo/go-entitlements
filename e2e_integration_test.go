@@ -110,7 +110,9 @@ func (s *E2ESuite) SetupTest() {
 	s.fetcher = googlemocks.NewMockSubscriptionsFetcher(s.T())
 
 	svc := entitlements.NewService(s.store, entitlements.WithLogger(log))
-	appleParser := apple.NewParser(apple.NewVerifier(apple.WithRootPool(s.ca.Pool), apple.WithBundleID(appleBundle)))
+	appleVerifier, err := apple.NewVerifier(appleBundle, apple.WithRootPool(s.ca.Pool))
+	s.Require().NoError(err)
+	appleParser := apple.NewParser(appleVerifier)
 	googleParser := google.NewParser(s.fetcher, google.WithPackageName(googlePkg))
 
 	mux := http.NewServeMux()

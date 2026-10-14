@@ -34,7 +34,7 @@ func TestAndroidPublisherFetcher_GetV2(t *testing.T) {
 		path = r.URL.Path
 		_, _ = w.Write([]byte(`{"subscriptionState":"SUBSCRIPTION_STATE_ACTIVE","linkedPurchaseToken":"old",
 "acknowledgementState":"ACKNOWLEDGEMENT_STATE_PENDING",
-"externalAccountIdentifiers":{"obfuscatedExternalAccountId":"u1"},
+"testPurchase":{},"externalAccountIdentifiers":{"obfuscatedExternalAccountId":"u1","obfuscatedExternalProfileId":"pr1"},
 "lineItems":[{"productId":"p1","expiryTime":"2026-11-14T10:00:00Z"},{"productId":"noexp"}]}`))
 	})
 
@@ -46,6 +46,8 @@ func TestAndroidPublisherFetcher_GetV2(t *testing.T) {
 	assert.Equal(t, google.StateActive, got.SubscriptionState)
 	assert.Equal(t, "old", got.LinkedPurchaseToken)
 	assert.Equal(t, "u1", got.ExternalAccountIdentifiers.ObfuscatedExternalAccountID)
+	assert.Equal(t, "pr1", got.ExternalAccountIdentifiers.ObfuscatedExternalProfileID)
+	assert.True(t, got.TestPurchase)
 	require.Len(t, got.LineItems, 2)
 	assert.Equal(t, time.Date(2026, 11, 14, 10, 0, 0, 0, time.UTC), got.LineItems[0].ExpiryTime)
 	assert.True(t, got.LineItems[1].ExpiryTime.IsZero())

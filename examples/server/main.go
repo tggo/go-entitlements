@@ -64,7 +64,7 @@ func run(log *zap.Logger) error {
 	}
 	svc := entitlements.NewService(store, entitlements.WithLogger(log))
 
-	verifierOpts := []apple.Option{apple.WithBundleID(bundleID)}
+	var verifierOpts []apple.Option
 	if path := os.Getenv("APPLE_ROOT_CA_PEM"); path != "" {
 		pemBytes, err := os.ReadFile(path)
 		if err != nil {
@@ -79,7 +79,11 @@ func run(log *zap.Logger) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(apple.NewVerifier(verifierOpts...)), svc, log))
+	appleVerifier, err := apple.NewVerifier(bundleID, verifierOpts...)
+	if err != nil {
+		return err
+	}
+	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(appleVerifier), svc, log))
 
 	if pkg := os.Getenv("GOOGLE_PACKAGE_NAME"); pkg != "" {
 		play, err := androidpublisher.NewService(ctx) // honours GOOGLE_APPLICATION_CREDENTIALS

@@ -29,7 +29,11 @@ type NotificationPayload struct {
 	Version          string            `json:"version,omitempty"`
 	SignedDate       int64             `json:"signedDate"` // ms since epoch
 	Data             *NotificationData `json:"data,omitempty"`
-	Summary          json.RawMessage   `json:"summary,omitempty"`
+	// Summary, ExternalPurchaseToken and AppData replace Data on the
+	// notification types that have no subscription payload.
+	Summary               json.RawMessage `json:"summary,omitempty"`
+	ExternalPurchaseToken json.RawMessage `json:"externalPurchaseToken,omitempty"`
+	AppData               json.RawMessage `json:"appData,omitempty"`
 }
 
 // JWSTransactionDecodedPayload is the decoded signedTransactionInfo.

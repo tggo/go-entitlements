@@ -410,3 +410,16 @@ func (s *StoreSuite) TestListByUser_EmptyUserMatchesNothing() {
 	s.Require().NoError(err)
 	s.Empty(list)
 }
+
+func (s *StoreSuite) TestSandboxRoundTrip() {
+	e := s.ev("e-sandbox", entitlements.StateActive, s.now)
+	e.Sandbox = true
+	got, err := s.process(e)
+	s.Require().NoError(err)
+	s.True(got.Sandbox)
+	s.True(s.get("tx1").Sandbox)
+	e2 := s.ev("e-prod", entitlements.StateActive, s.now.Add(time.Minute))
+	_, err = s.process(e2)
+	s.Require().NoError(err)
+	s.False(s.get("tx1").Sandbox)
+}

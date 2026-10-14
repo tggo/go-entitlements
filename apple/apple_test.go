@@ -19,7 +19,19 @@ import (
 const token = "7e3fb20b-4cdb-47cc-936d-99d65f608138"
 
 func parserFor(ca *testutil.AppleCA, opts ...apple.Option) *apple.Parser {
-	return apple.NewParser(apple.NewVerifier(append([]apple.Option{apple.WithRootPool(ca.Pool)}, opts...)...))
+	v, err := apple.NewVerifier("com.example.app", append([]apple.Option{apple.WithRootPool(ca.Pool)}, opts...)...)
+	if err != nil {
+		panic(err)
+	}
+	return apple.NewParser(v)
+}
+
+func defaultRootParser() *apple.Parser {
+	v, err := apple.NewVerifier("com.example.app")
+	if err != nil {
+		panic(err)
+	}
+	return apple.NewParser(v)
 }
 
 func TestParser_MapsEveryType(t *testing.T) {
@@ -148,7 +160,7 @@ func TestVerifier_Rejections(t *testing.T) {
 		{"tampered payload", parserFor(ca), body(tamperedPayload)},
 		{"signature by other key", parserFor(ca), body(forged)},
 		{"chain to wrong custom root", parserFor(otherCA), good},
-		{"chain to wrong root (default Apple root)", apple.NewParser(nil), good},
+		{"chain to wrong root (default Apple root)", defaultRootParser(), good},
 		{"leaf lacks OID", parserFor(testutil.NewAppleCA(t, testutil.AppleCAOptions{OmitLeafOID: true})), nil},
 		{"intermediate lacks OID", parserFor(testutil.NewAppleCA(t, testutil.AppleCAOptions{OmitIntermediateOID: true})), nil},
 		{"expired leaf", parserFor(testutil.NewAppleCA(t, testutil.AppleCAOptions{ExpiredLeaf: true})), nil},
@@ -196,7 +208,7 @@ func TestVerifier_TimeFn(t *testing.T) {
 }
 
 func TestVerifier_NotificationBadBody(t *testing.T) {
-	p := apple.NewParser(nil)
+	p := defaultRootParser()
 	for name, b := range map[string]string{"not json": "nope", "empty payload": `{"signedPayload":""}`} {
 		t.Run(name, func(t *testing.T) {
 			_, err := p.Parse([]byte(b))
@@ -210,10 +222,12 @@ func TestVerifier_BundleAndEnvironment(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	body := testutil.LoadAppleFixture(t, "subscribed").SignBody(t, ca)
 
-	_, err := parserFor(ca, apple.WithBundleID("com.example.app"), apple.WithEnvironment("Production")).Parse(body)
+	_, err := parserFor(ca, apple.WithEnvironment("Production")).Parse(body)
 	require.NoError(t, err)
 
-	_, err = parserFor(ca, apple.WithBundleID("com.other.app")).Parse(body)
+	v, err := apple.NewVerifier("com.other.app", apple.WithRootPool(ca.Pool))
+	require.NoError(t, err)
+	_, err = apple.NewParser(v).Parse(body)
 	assert.ErrorIs(t, err, entitlements.ErrInvalidSignature)
 
 	_, err = parserFor(ca, apple.WithEnvironment("Sandbox")).Parse(body)
@@ -246,7 +260,7 @@ func TestVerify_BadPayloadJSON(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	jws := ca.Sign(t, []int{1, 2})
 	var out apple.NotificationPayload
-	err := apple.NewVerifier(apple.WithRootPool(ca.Pool)).Verify(jws, &out)
+	err := mustV(t, ca).Verify(jws, &out)
 	require.Error(t, err)
 	assert.False(t, errors.Is(err, entitlements.ErrInvalidSignature))
 }
@@ -257,7 +271,7 @@ func TestVerify_WrongKeyType(t *testing.T) {
 	jws := ca.Sign(t, map[string]string{})
 	parts := strings.Split(jws, ".")
 	h := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"ES256","x5c":["!!","AAAA"]}`))
-	v := apple.NewVerifier(apple.WithRootPool(ca.Pool))
+	v := mustV(t, ca)
 	assert.ErrorIs(t, v.Verify(h+"."+parts[1]+"."+parts[2], &struct{}{}), entitlements.ErrInvalidSignature)
 	h = base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"ES256","x5c":["AAAA","AAAA"]}`))
 	assert.ErrorIs(t, v.Verify(h+"."+parts[1]+"."+parts[2], &struct{}{}), entitlements.ErrInvalidSignature)
@@ -270,3 +284,5 @@ func TestEmbeddedRootCA(t *testing.T) {
 	require.Len(t, subjects, 1)
 	assert.Contains(t, string(subjects[0]), "Apple Root CA - G3")
 }
+
+func base64RawURL(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

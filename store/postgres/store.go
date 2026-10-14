@@ -103,7 +103,7 @@ func recordable(err error) bool {
 		errors.Is(err, entitlements.ErrUnsupported)
 }
 
-const selectCols = `source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version`
+const selectCols = `source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, sandbox`
 
 func scan(row pgx.Row) (*entitlements.Entitlement, error) {
 	var (
@@ -112,7 +112,7 @@ func scan(row pgx.Row) (*entitlements.Entitlement, error) {
 		state   string
 		expires *time.Time
 	)
-	if err := row.Scan(&source, &e.OriginalTxID, &e.UserID, &e.ProductID, &state, &expires, &e.UpdatedAt, &e.Version); err != nil {
+	if err := row.Scan(&source, &e.OriginalTxID, &e.UserID, &e.ProductID, &state, &expires, &e.UpdatedAt, &e.Version, &e.Sandbox); err != nil {
 		return nil, err
 	}
 	e.Source = entitlements.Source(source)
@@ -188,12 +188,13 @@ ON CONFLICT (event_id) DO NOTHING`,
 		expires = &next.ExpiresAt
 	}
 	if _, err := tx.Exec(ctx, `
-INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, sandbox)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (source, original_tx_id) DO UPDATE SET
     user_id = EXCLUDED.user_id, product_id = EXCLUDED.product_id, state = EXCLUDED.state,
-    expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at, version = EXCLUDED.version`,
-		string(ev.Source), ev.OriginalTxID, next.UserID, next.ProductID, string(next.State), expires, next.UpdatedAt, next.Version); err != nil {
+    expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at, version = EXCLUDED.version,
+    sandbox = EXCLUDED.sandbox`,
+		string(ev.Source), ev.OriginalTxID, next.UserID, next.ProductID, string(next.State), expires, next.UpdatedAt, next.Version, next.Sandbox); err != nil {
 		return nil, err
 	}
 	if err := finish(ctx, tx, ev.ID, true, ""); err != nil {

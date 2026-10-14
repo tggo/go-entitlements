@@ -33,10 +33,12 @@ func convertV2(resp *androidpublisher.SubscriptionPurchaseV2) (*SubscriptionPurc
 		SubscriptionState:    resp.SubscriptionState,
 		LinkedPurchaseToken:  resp.LinkedPurchaseToken,
 		AcknowledgementState: resp.AcknowledgementState,
+		TestPurchase:         resp.TestPurchase != nil,
 	}
 	if resp.ExternalAccountIdentifiers != nil {
 		out.ExternalAccountIdentifiers = &ExternalAccountIdentifiers{
 			ObfuscatedExternalAccountID: resp.ExternalAccountIdentifiers.ObfuscatedExternalAccountId,
+			ObfuscatedExternalProfileID: resp.ExternalAccountIdentifiers.ObfuscatedExternalProfileId,
 		}
 	}
 	for _, li := range resp.LineItems {

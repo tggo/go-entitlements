@@ -32,7 +32,8 @@ store := postgres.New(pool)
 _ = store.Migrate(ctx)
 svc := entitlements.NewService(store, entitlements.WithLogger(log))
 
-appleParser := apple.NewParser(apple.NewVerifier(apple.WithBundleID("com.example.app")))
+appleVerifier, _ := apple.NewVerifier("com.example.app") // bundle ID is required; add apple.WithEnvironment("Production") to reject sandbox
+appleParser := apple.NewParser(appleVerifier)
 play, _ := androidpublisher.NewService(ctx) // credentials from GOOGLE_APPLICATION_CREDENTIALS
 googleParser := google.NewParser(google.NewAndroidPublisherFetcher(play), google.WithPackageName("com.example.app"))
 
@@ -117,6 +118,15 @@ make generate-mocks     # mockery
 ```
 
 Apple payloads in tests are signed by a generated test CA, so the full verification path runs; the verifier takes the root pool as an option. Google calls go through a mocked `SubscriptionsFetcher`. `e2e_integration_test.go` exercises HTTP, service and Postgres together: subscribe, renew and refund, duplicates, out-of-order delivery, a Google upgrade, and concurrent deliveries.
+
+## Known limitations
+
+- Apple: if a refund for an older transaction arrives before the renewal that superseded it, the chain is refunded and the later renewal is dropped as stale. Fixing this needs per-transaction tracking.
+- Google: the grace-period end is not documented in `subscriptionsv2`. During `IN_GRACE_PERIOD` access lasts until the later of `expiryTime` and notification time plus `WithGraceDuration` (default 7 days). Not yet confirmed against a live response.
+- Google: the library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.
+- Apple: tested against real signed Sandbox and Production notifications from a live app. Google: tested against documented payloads and fixtures derived from public issues, not live traffic.
+
+See [docs/prior-art](docs/prior-art/README.md) for the issues in other libraries this one was tested against.
 
 ## Not in scope
 

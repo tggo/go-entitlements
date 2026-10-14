@@ -39,12 +39,14 @@ func TestRealFixtures(t *testing.T) {
 		"DID_CHANGE_RENEWAL_STATUS/AUTO_RENEW_DISABLED": {state: entitlements.StateActive, expires: 1790767344000, occurred: 1790681572251},
 		"EXPIRED/VOLUNTARY":                             {state: entitlements.StateExpired, expires: 1790767344000, occurred: 1790767347942},
 	}
-	p := apple.NewParser(apple.NewVerifier(apple.WithBundleID(realBundle)))
+	vf, err := apple.NewVerifier(realBundle)
+	require.NoError(t, err)
+	p := apple.NewParser(vf)
 	seen := 0
 	for _, f := range files {
 		body, err := os.ReadFile(f)
 		require.NoError(t, err)
-		n, err := apple.NewVerifier(apple.WithBundleID(realBundle)).VerifyNotification(body)
+		n, err := vf.VerifyNotification(body)
 		require.NoError(t, err, filepath.Base(f))
 		key := n.Payload.NotificationType
 		if n.Payload.Subtype != "" {
