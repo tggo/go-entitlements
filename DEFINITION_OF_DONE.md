@@ -138,4 +138,4 @@ the answer — a guessed criterion is worse than none.
 - a Google purchase is acknowledged only after all its events are stored, and again on the re-run if the acknowledge failed
 - the library ships only `inbox/memory` (tests and demos, not durable); a consumer brings a durable `Inbox`, which must pass `inboxtest.Run`
 - an item with an invalid signature never reaches `Service.Process`, so it cannot consume a dedupe key: a genuine notification with the same notification UUID is still processed. Apple deliveries are saved without an ID for the same reason
-**Verified:** `inbox` unit tests, `inboxtest` on `inbox/memory`, `FuzzProcessStored` (no panic, status coherent with the error), 37 hand-written mutants of `ProcessStored`, the memory inbox and the header filter all killed, 2026-10-15.
+**Verified:** `inbox` unit tests, `inboxtest` on `inbox/memory`, `FuzzProcessStored` (no panic, status coherent with the error), 39 hand-written mutants of `ProcessStored`, the inboxes and the header filter, all killed after two added tests, 2026-10-15.
