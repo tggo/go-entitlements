@@ -81,7 +81,10 @@ func (s *Store) Apply(ctx context.Context, ev entitlements.Event, fn func(cur *e
 }
 
 // Get implements entitlements.Store.
-func (s *Store) Get(_ context.Context, source entitlements.Source, originalTxID string) (*entitlements.Entitlement, error) {
+func (s *Store) Get(ctx context.Context, source entitlements.Source, originalTxID string) (*entitlements.Entitlement, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.items[key{source, originalTxID}]
@@ -93,7 +96,10 @@ func (s *Store) Get(_ context.Context, source entitlements.Source, originalTxID 
 
 // ListByUser implements entitlements.Store. Results are ordered by
 // (Source, OriginalTxID) for determinism.
-func (s *Store) ListByUser(_ context.Context, userID string) ([]entitlements.Entitlement, error) {
+func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.Entitlement, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if userID == "" {
 		return nil, nil // userless entitlements (no appAccountToken) are not one user's
 	}

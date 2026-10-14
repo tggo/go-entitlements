@@ -119,6 +119,20 @@ make generate-mocks     # mockery
 
 Apple payloads in tests are signed by a generated test CA, so the full verification path runs; the verifier takes the root pool as an option. Google calls go through a mocked `SubscriptionsFetcher`. `e2e_integration_test.go` exercises HTTP, service and Postgres together: subscribe, renew and refund, duplicates, out-of-order delivery, a Google upgrade, and concurrent deliveries.
 
+## Writing your own store
+
+Implement `entitlements.Store` (the numbered contract is in its doc comment) and run the conformance suite from your tests:
+
+```go
+func TestConformance(t *testing.T) {
+    storetest.Run(t, func(t *testing.T) entitlements.Store {
+        return mystore.New(resetDatabase(t)) // fresh, empty store per subtest
+    })
+}
+```
+
+`storetest` uses only the standard library, runs its subtests one after another, and covers atomic apply, per-source dedupe, recorded-not-applied outcomes, retry after errors, supersede tombstones, concurrency and context cancellation. The memory and Postgres stores in this repo run the same suite.
+
 ## Known limitations
 
 - Apple: if a refund for an older transaction arrives before the renewal that superseded it, the chain is refunded and the later renewal is dropped as stale. Fixing this needs per-transaction tracking.
