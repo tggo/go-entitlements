@@ -398,3 +398,15 @@ func (s *StoreSuite) TestMigrateFailures() {
 	// missing migrations dir
 	s.Error(s.store.MigrateFS(ctx, fstest.MapFS{}))
 }
+
+func (s *StoreSuite) TestListByUser_EmptyUserMatchesNothing() {
+	e := s.ev("e-nouser", entitlements.StateActive, s.now)
+	e.UserID = ""
+	_, err := s.store.Apply(context.Background(), e, func(cur *entitlements.Entitlement) (*entitlements.Entitlement, error) {
+		return entitlements.Apply(cur, e)
+	})
+	s.Require().NoError(err)
+	list, err := s.store.ListByUser(context.Background(), "")
+	s.Require().NoError(err)
+	s.Empty(list)
+}

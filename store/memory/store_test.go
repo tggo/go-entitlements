@@ -119,3 +119,18 @@ func TestStore_Concurrent(t *testing.T) {
 	assert.Equal(t, t0.Add((n-1)*time.Second), got.UpdatedAt)
 	assert.LessOrEqual(t, got.Version, int64(n))
 }
+
+func TestStore_ListByUser_EmptyUserMatchesNothing(t *testing.T) {
+	st := memory.New()
+	e := event("e1", entitlements.StateActive, t0)
+	e.UserID = ""
+	_, err := process(st, e)
+	require.NoError(t, err)
+
+	list, err := st.ListByUser(context.Background(), "")
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	got, err := st.Get(context.Background(), e.Source, e.OriginalTxID)
+	require.NoError(t, err)
+	assert.Equal(t, "", got.UserID)
+}

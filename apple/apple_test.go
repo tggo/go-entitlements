@@ -1,7 +1,6 @@
 package apple_test
 
 import (
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -93,11 +92,22 @@ func TestParser_MissingTransactionData(t *testing.T) {
 	require.Error(t, err)
 	assert.False(t, errors.Is(err, entitlements.ErrInvalidSignature))
 
-	f = testutil.LoadAppleFixture(t, "subscribed")
-	delete(f.Transaction, "appAccountToken")
-	_, err = p.Parse(f.SignBody(t, ca))
-	assert.ErrorIs(t, err, apple.ErrMissingAccountToken)
-	assert.ErrorIs(t, err, entitlements.ErrUnsupported)
+}
+
+func TestParser_NoAccountToken(t *testing.T) {
+	ca := testutil.NewAppleCA(t)
+	ev, err := parserFor(ca).Parse(testutil.LoadAppleFixture(t, "subscribed_no_account_token").SignBody(t, ca))
+	require.NoError(t, err)
+	assert.Empty(t, ev.UserID)
+	assert.Equal(t, "2000000000001", ev.OriginalTxID)
+	assert.Equal(t, entitlements.StateActive, ev.State)
+}
+
+func TestParser_OneTimeChargeIgnored(t *testing.T) {
+	ca := testutil.NewAppleCA(t)
+	_, err := parserFor(ca).Parse(testutil.LoadAppleFixture(t, "one_time_charge").SignBody(t, ca))
+	require.ErrorIs(t, err, entitlements.ErrIgnored)
+	assert.Contains(t, err.Error(), "Non-Consumable")
 }
 
 func TestToEvent_Nil(t *testing.T) {
@@ -259,5 +269,4 @@ func TestEmbeddedRootCA(t *testing.T) {
 	subjects := pool.Subjects() //nolint:staticcheck // only way to inspect a pool
 	require.Len(t, subjects, 1)
 	assert.Contains(t, string(subjects[0]), "Apple Root CA - G3")
-	var _ *x509.CertPool = pool
 }

@@ -1,0 +1,26 @@
+{
+  "notification": {
+    "notificationType": "ONE_TIME_CHARGE",
+    "notificationUUID": "uuid-one_time_charge",
+    "version": "2.0",
+    "signedDate": 1760000000000,
+    "data": {
+      "appAppleId": 123456,
+      "bundleId": "com.example.app",
+      "environment": "Sandbox"
+    }
+  },
+  "transaction": {
+    "transactionId": "2000000000009",
+    "originalTransactionId": "2000000000009",
+    "bundleId": "com.example.app",
+    "productId": "com.example.lifetime",
+    "purchaseDate": 1760000000000,
+    "quantity": 1,
+    "type": "Non-Consumable",
+    "inAppOwnershipType": "PURCHASED",
+    "signedDate": 1760000000000,
+    "environment": "Sandbox",
+    "transactionReason": "PURCHASE"
+  }
+}

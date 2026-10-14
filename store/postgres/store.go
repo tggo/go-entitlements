@@ -218,6 +218,9 @@ func (s *Store) Get(ctx context.Context, source entitlements.Source, originalTxI
 
 // ListByUser implements entitlements.Store, ordered by (source, original_tx_id).
 func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.Entitlement, error) {
+	if userID == "" {
+		return nil, nil // userless entitlements (no appAccountToken) are not one user's
+	}
 	rows, err := s.pool.Query(ctx,
 		`SELECT `+selectCols+` FROM entitlements WHERE user_id = $1 ORDER BY source, original_tx_id`, userID)
 	if err != nil {

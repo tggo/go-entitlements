@@ -8,15 +8,15 @@ import (
 	"github.com/tggo/go-entitlements"
 )
 
-// ErrMissingAccountToken means the transaction has no appAccountToken, so the
-// event cannot be attributed to a user. It wraps entitlements.ErrUnsupported:
-// retrying will not help, so webhooks should acknowledge and log it.
-var ErrMissingAccountToken = fmt.Errorf("%w: transaction has no appAccountToken", entitlements.ErrUnsupported)
-
 // ToEvent maps a verified notification to a normalized event.
 //
 //   - TEST returns entitlements.ErrIgnored; unmapped types return ErrUnsupported.
-//   - UserID = appAccountToken, OriginalTxID = originalTransactionId,
+//   - UserID = appAccountToken when the app sets one, otherwise empty: many
+//     apps link users to originalTransactionId themselves, so the caller must
+//     resolve the user from Event.OriginalTxID (the real key). Parse has no
+//     context, so there is no resolver hook.
+//   - ONE_TIME_CHARGE returns ErrIgnored (non-subscription purchase).
+//   - OriginalTxID = originalTransactionId,
 //     ExpiresAt = expiresDate, OccurredAt = signedDate (outer payload),
 //     ID = notificationUUID.
 //   - DID_CHANGE_RENEWAL_STATUS only toggles auto-renew, so the state is
@@ -32,8 +32,19 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 		return entitlements.Event{}, errors.New("apple: nil notification")
 	}
 	p := n.Payload
-	if p.NotificationType == "TEST" {
+	switch p.NotificationType {
+	case "TEST":
 		return entitlements.Event{}, entitlements.ErrIgnored
+	case "ONE_TIME_CHARGE":
+		// Consumables, non-consumables and non-renewing subscriptions are not
+		// subscription state. Non-renewing subscriptions would need an
+		// app-defined duration (Apple sends no expiresDate), so they are
+		// ignored too rather than guessed.
+		typ := ""
+		if n.Transaction != nil {
+			typ = n.Transaction.Type
+		}
+		return entitlements.Event{}, fmt.Errorf("%w: ONE_TIME_CHARGE for %q is a non-subscription purchase, out of scope", entitlements.ErrIgnored, typ)
 	}
 	state, derive, err := mapState(p.NotificationType, p.Subtype)
 	if err != nil {
@@ -42,9 +53,6 @@ func ToEvent(n *Notification) (entitlements.Event, error) {
 	tx := n.Transaction
 	if tx == nil {
 		return entitlements.Event{}, fmt.Errorf("apple: %s without signedTransactionInfo", p.NotificationType)
-	}
-	if tx.AppAccountToken == "" {
-		return entitlements.Event{}, ErrMissingAccountToken
 	}
 	occurred := msToTime(p.SignedDate)
 	expires := msToTime(tx.ExpiresDate)

@@ -92,6 +92,9 @@ func (s *Store) Get(ctx context.Context, source entitlements.Source, originalTxI
 // ListByUser implements entitlements.Store. Results are ordered by
 // (Source, OriginalTxID) for determinism.
 func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.Entitlement, error) {
+	if userID == "" {
+		return nil, nil // userless entitlements (no appAccountToken) are not one user's
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out []entitlements.Entitlement

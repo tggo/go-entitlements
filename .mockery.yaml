@@ -10,6 +10,11 @@ packages:
   github.com/tggo/go-entitlements/google:
     interfaces:
       SubscriptionsFetcher:
+  github.com/tggo/go-entitlements/httpx:
+    interfaces:
+      AppleParser:
+      GoogleParser:
+      Processor:
 resolve-type-alias: false
 disable-version-string: true
 issue-845-fix: true

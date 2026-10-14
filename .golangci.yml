@@ -1,0 +1,34 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - misspell
+    - noctx
+    - unconvert
+    - unparam
+    - nolintlint
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    paths:
+      - mocks
+    rules:
+      - path: _test\.go
+        linters: [unparam, gocritic, noctx]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/tggo/go-entitlements

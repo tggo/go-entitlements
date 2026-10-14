@@ -45,14 +45,14 @@ func NewParser(fetcher SubscriptionsFetcher, opts ...Option) *Parser {
 func (p *Parser) Parse(ctx context.Context, body []byte) (entitlements.Event, error) {
 	var env PushEnvelope
 	if err := json.Unmarshal(body, &env); err != nil {
-		return entitlements.Event{}, fmt.Errorf("%w: envelope: %v", ErrMalformed, err)
+		return entitlements.Event{}, fmt.Errorf("%w: envelope: %w", ErrMalformed, err)
 	}
 	if env.Message.MessageID == "" || len(env.Message.Data) == 0 {
 		return entitlements.Event{}, fmt.Errorf("%w: missing messageId or data", ErrMalformed)
 	}
 	var dn DeveloperNotification
 	if err := json.Unmarshal(env.Message.Data, &dn); err != nil {
-		return entitlements.Event{}, fmt.Errorf("%w: payload: %v", ErrMalformed, err)
+		return entitlements.Event{}, fmt.Errorf("%w: payload: %w", ErrMalformed, err)
 	}
 	if p.packageName != "" && dn.PackageName != p.packageName {
 		return entitlements.Event{}, fmt.Errorf("%w: %q", ErrPackageMismatch, dn.PackageName)

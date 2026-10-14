@@ -1,0 +1,71 @@
+package httpx
+
+import (
+	"context"
+	"errors"
+	"net/http"
+
+	"go.uber.org/zap"
+
+	"github.com/tggo/go-entitlements"
+	"github.com/tggo/go-entitlements/google"
+)
+
+// GoogleParser decodes an RTDN Pub/Sub push body and fetches the real
+// subscription state. *google.Parser implements it.
+type GoogleParser interface {
+	Parse(ctx context.Context, body []byte) (entitlements.Event, error)
+}
+
+type googleHandler struct {
+	parser GoogleParser
+	svc    Processor
+	log    *zap.Logger
+	cfg    config
+}
+
+// NewGoogleHandler returns the handler for the Pub/Sub push endpoint that
+// receives Google Play RTDN. Malformed pushes answer 400, a failed
+// authenticator 401. A notification for another package name is acknowledged
+// (200, logged): redelivery cannot fix it. Any other parse error comes from
+// fetching the subscription state and answers 500 so Pub/Sub redelivers.
+func NewGoogleHandler(parser GoogleParser, svc Processor, logger *zap.Logger, opts ...Option) http.Handler {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	return &googleHandler{parser: parser, svc: svc, log: logger.With(zap.String("handler", "google")), cfg: newConfig(opts)}
+}
+
+func (h *googleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && h.cfg.auth != nil {
+		if err := h.cfg.auth(r); err != nil {
+			h.log.Error("rejected push: authentication failed", zap.Error(err), zap.String("remote", r.RemoteAddr))
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+	body, ok := readBody(w, r, h.cfg.maxBody, h.log)
+	if !ok {
+		return
+	}
+	ev, err := h.parser.Parse(r.Context(), body)
+	switch {
+	case err == nil:
+		process(w, r, h.svc, ev, h.log)
+	case errors.Is(err, entitlements.ErrIgnored), errors.Is(err, entitlements.ErrUnsupported):
+		h.log.Warn("notification not applicable", zap.Error(err))
+		w.WriteHeader(http.StatusOK)
+	case errors.Is(err, google.ErrPackageMismatch):
+		h.log.Warn("notification for another package, acknowledged", zap.Error(err))
+		w.WriteHeader(http.StatusOK)
+	case errors.Is(err, google.ErrMalformed):
+		h.log.Error("rejected push: malformed", zap.Error(err), zap.String("remote", r.RemoteAddr))
+		http.Error(w, "bad request", http.StatusBadRequest)
+	case errors.Is(err, entitlements.ErrInvalidSignature):
+		h.log.Error("rejected push: invalid signature", zap.Error(err))
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	default:
+		h.log.Error("parse push", zap.Error(err))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
