@@ -1,0 +1,15 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+mockname: "Mock{{.InterfaceName}}"
+filename: "mock_{{.InterfaceName}}.go"
+packages:
+  github.com/tggo/go-entitlements:
+    interfaces:
+      Store:
+  github.com/tggo/go-entitlements/google:
+    interfaces:
+      SubscriptionsFetcher:
+resolve-type-alias: false
+disable-version-string: true
+issue-845-fix: true

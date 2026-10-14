@@ -1,0 +1,33 @@
+{
+  "notification": {
+    "notificationType": "DID_CHANGE_RENEWAL_STATUS",
+    "subtype": "AUTO_RENEW_DISABLED",
+    "notificationUUID": "uuid-renewal_status_off_lapsed",
+    "version": "2.0",
+    "signedDate": 1760000000000,
+    "data": {"appAppleId": 123456, "bundleId": "com.example.app", "environment": "Production", "status": 1}
+  },
+  "transaction": {
+    "transactionId": "2000000000002",
+    "originalTransactionId": "2000000000001",
+    "bundleId": "com.example.app",
+    "productId": "com.example.pro.monthly",
+    "purchaseDate": 1759900000000,
+    "originalPurchaseDate": 1750000000000,
+    "expiresDate": 1759000000000,
+    "quantity": 1,
+    "type": "Auto-Renewable Subscription",
+    "appAccountToken": "7e3fb20b-4cdb-47cc-936d-99d65f608138",
+    "inAppOwnershipType": "PURCHASED",
+    "signedDate": 1760000000000,
+    "environment": "Production"
+  },
+  "renewal": {
+    "originalTransactionId": "2000000000001",
+    "autoRenewProductId": "com.example.pro.monthly",
+    "autoRenewStatus": 1,
+    "gracePeriodExpiresDate": 0,
+    "signedDate": 1760000000000,
+    "environment": "Production"
+  }
+}

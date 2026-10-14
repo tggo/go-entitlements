@@ -1,0 +1,1 @@
+{"subscriptionState":"SUBSCRIPTION_STATE_ACTIVE","linkedPurchaseToken":"old-token","externalAccountIdentifiers":{"obfuscatedExternalAccountId":"user-1"},"lineItems":[{"productId":"premium.monthly","expiryTime":"2026-11-14T10:00:00Z"},{"productId":"premium.yearly","expiryTime":"2027-10-14T10:00:00Z"}]}
