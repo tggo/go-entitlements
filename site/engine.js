@@ -1,0 +1,220 @@
+/* Ports of the library rules, kept small and literal so the simulator behaves
+ * like the Go code. Sources:
+ *   statemachine.go  -> applyEvent (Apply, isTerminal)
+ *   service.go       -> Service.process / supersede / isActive
+ *   apple/mapper.go  -> appleToEvent (ToEvent, mapType, resolve, ignoredTypes)
+ *   google/parser.go -> googleToEvent (fromSubscription, fromVoided, mapState)
+ *   httpx/*.go       -> HTTP status per outcome
+ * Times are milliseconds since epoch (UTC). */
+(function (root) {
+  'use strict';
+
+  var DAY = 86400000;
+  function d(s) { return Date.parse(s + 'T00:00:00Z'); }
+  var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmt(ms) {
+    if (!ms) return 'none';
+    var x = new Date(ms);
+    return MON[x.getUTCMonth()] + ' ' + x.getUTCDate();
+  }
+
+  function isTerminal(s) { return s === 'refunded' || s === 'revoked'; }
+
+  /* statemachine.go: Apply. Returns {next} or {stale: reason}. */
+  function applyEvent(cur, ev) {
+    if (!cur) {
+      return { next: {
+        userId: ev.userId, productId: ev.productId, tx: ev.tx, source: ev.source,
+        state: ev.state, expiresAt: ev.expiresAt, updatedAt: ev.occurredAt,
+        version: 1, environment: ev.environment || ''
+      } };
+    }
+    if (ev.occurredAt < cur.updatedAt) {
+      return { stale: 'It is older than the last event applied (' + fmt(cur.updatedAt) + ').' };
+    }
+    if (ev.source === 'apple' && ev.state === 'refunded' && !isTerminal(cur.state) &&
+        ev.expiresAt && ev.expiresAt < cur.expiresAt) {
+      return { stale: 'It refunds an older transaction (expires ' + fmt(ev.expiresAt) +
+        ') but the chain already runs to ' + fmt(cur.expiresAt) + '.' };
+    }
+    if (isTerminal(cur.state) && !isTerminal(ev.state)) {
+      var reactivates = !ev.noRevive && (ev.state === 'active' || ev.restores) && ev.occurredAt > cur.updatedAt;
+      if (!reactivates) {
+        return { stale: 'The chain is ' + cur.state + '. This event wants ' + ev.state +
+          ', and only a new purchase, a renewal or a refund reversal may lift that.' };
+      }
+    }
+    var n = Object.assign({}, cur);
+    n.state = ev.state;
+    if (ev.expiresAt) n.expiresAt = ev.expiresAt;
+    if (ev.productId) n.productId = ev.productId;
+    if (ev.userId) n.userId = ev.userId;
+    n.environment = ev.environment || '';
+    n.updatedAt = ev.occurredAt;
+    n.version = cur.version + 1;
+    return { next: n };
+  }
+
+  function entActive(e, now) {
+    if (e.state !== 'active' && e.state !== 'grace') return false;
+    return !e.expiresAt || now < e.expiresAt;
+  }
+
+  /* apple/mapper.go */
+  var IGNORED = { TEST:1, RENEWAL_EXTENSION:1, REFUND_DECLINED:1, PRICE_INCREASE:1, PRICE_CHANGE:1,
+    CONSUMPTION_REQUEST:1, METADATA_UPDATE:1, MIGRATION:1, EXTERNAL_PURCHASE_TOKEN:1,
+    RESCIND_CONSENT:1, CHILD_CONSENT_REVOKED:1 };
+
+  function mapType(typ, sub) {
+    switch (typ) {
+      case 'SUBSCRIBED': case 'DID_RENEW': return { state: 'active' };
+      case 'DID_FAIL_TO_RENEW': return { state: sub === 'GRACE_PERIOD' ? 'grace' : 'billing_retry' };
+      case 'GRACE_PERIOD_EXPIRED': return { state: 'billing_retry' };
+      case 'EXPIRED': return { state: 'expired' };
+      case 'REFUND': return { state: 'refunded' };
+      case 'REVOKE': return { state: 'revoked' };
+      case 'DID_CHANGE_RENEWAL_STATUS': case 'DID_CHANGE_RENEWAL_PREF':
+      case 'OFFER_REDEEMED': case 'RENEWAL_EXTENDED': return { ambiguous: true };
+      case 'REFUND_REVERSED': return { ambiguous: true, restores: true };
+    }
+    return null;
+  }
+
+  function resolve(tx, status, expires, signed, restores) {
+    if (tx.revocationDate && !restores) return 'refunded';
+    switch (status) {
+      case 1: return 'active'; case 2: return 'expired'; case 3: return 'billing_retry';
+      case 4: return 'grace'; case 5: return 'revoked';
+    }
+    return expires > signed ? 'active' : 'expired';
+  }
+
+  /* p: {uuid,type,subtype,status,signed,expires,graceEnd,revocationDate,txType,env,userId,tx,product}
+   * returns {event} or {error: 'ignored'|'unsupported'|'noexpiry', msg} */
+  function appleToEvent(p) {
+    if (IGNORED[p.type]) return { error: 'ignored', msg: p.type + ' carries no subscription state.' };
+    var m = mapType(p.type, p.subtype);
+    if (!m) return { error: 'unsupported', msg: 'Unknown notification type ' + p.type + '.' };
+    var state = m.state;
+    if (m.ambiguous) state = resolve(p, p.status || 0, p.expires, p.signed, !!m.restores);
+    else if (state === 'active' && p.revocationDate) state = 'refunded';
+    var expires = p.expires;
+    if (state === 'active' && !expires) return { error: 'noexpiry', msg: 'No expiry date, so access is not granted.' };
+    if (state === 'grace') {
+      if (!p.graceEnd) return { error: 'noexpiry', msg: 'Grace period without an end date.' };
+      if (p.graceEnd > expires) expires = p.graceEnd;
+    }
+    return { event: {
+      id: p.uuid, source: 'apple', userId: p.userId || '', tx: p.tx, productId: p.product,
+      state: state, expiresAt: expires, occurredAt: p.signed,
+      restores: !!m.restores, noRevive: !!(m.ambiguous && !m.restores),
+      environment: p.env || '', supersedes: ''
+    } };
+  }
+
+  /* google/parser.go. p: {kind:'sub'|'voided'|'test'|'otherPackage', messageId, eventTime, token,
+   *   subState, expiry, linked, userId, product, orderMatches, testPurchase} */
+  function googleMapState(s) {
+    switch (s) {
+      case 'ACTIVE': case 'CANCELED': return 'active';
+      case 'IN_GRACE_PERIOD': return 'grace';
+      case 'ON_HOLD': return 'billing_retry';
+      case 'PAUSED': return 'paused';
+      case 'EXPIRED': case 'PENDING_PURCHASE_CANCELED': return 'expired';
+      case 'PENDING': return 'ignored';
+    }
+    return null;
+  }
+
+  function googleToEvent(p) {
+    if (p.kind === 'otherPackage') return { error: 'ignored', msg: 'Notification is for another package name. Nothing was fetched.' };
+    if (p.kind === 'test') return { error: 'ignored', msg: 'This is the Play Console test message. It carries no state.' };
+    var ev = { id: p.messageId, source: 'google', occurredAt: p.eventTime, tx: p.token,
+      productId: p.product, userId: p.userId || '', expiresAt: p.expiry || 0, supersedes: '',
+      environment: p.testPurchase ? 'GoogleTest' : '' };
+    if (p.kind === 'voided') {
+      if (!p.orderMatches) return { error: 'ignored', msg: 'The voided order is not the latest order of the subscription.' };
+      ev.state = 'refunded';
+      return { event: ev };
+    }
+    var st = googleMapState(p.subState);
+    if (st === 'ignored') return { error: 'ignored', msg: 'Still pending the first payment: nothing to grant.' };
+    if (!st) return { error: 'unsupported', msg: 'Subscription state ' + p.subState + ' is not mapped.' };
+    ev.state = st;
+    if ((st === 'active' || st === 'grace')) {
+      if (!ev.expiresAt) return { error: 'noexpiry', msg: 'No expiryTime, so access is not granted.' };
+      ev.supersedes = p.linked || '';
+    }
+    return { event: ev };
+  }
+
+  /* service.go + a store that follows the numbered contract in interfaces.go. */
+  function Service() { this.reset(); }
+  Service.prototype.reset = function () {
+    this.chains = {};      // "source|tx" -> entitlement
+    this.processed = {};   // "source|id" -> outcome
+    this.order = [];       // chain keys in creation order
+    this.allowSandbox = false;
+    this.dbDown = false;
+  };
+  Service.prototype._key = function (src, tx) { return src + '|' + tx; };
+
+  // Store.Apply: atomic dedupe + fn + write. Returns {kind}.
+  Service.prototype._storeApply = function (ev, fn) {
+    if (this.dbDown) return { kind: 'error' };
+    var pk = ev.source + '|' + ev.id;
+    if (this.processed[pk]) return { kind: 'duplicate' };
+    var ck = this._key(ev.source, ev.tx);
+    var cur = this.chains[ck] || null;
+    var r = fn(cur);
+    if (r.stale) { this.processed[pk] = 'stale'; return { kind: 'stale', reason: r.stale, cur: cur }; }
+    if (!cur) this.order.push(ck);
+    this.chains[ck] = r.next;
+    this.processed[pk] = 'applied';
+    return { kind: 'applied', ent: r.next, before: cur };
+  };
+
+  // Service.Process. Returns {kind, stopGate, ...}
+  Service.prototype.process = function (ev) {
+    var self = this;
+    if (ev.environment && ev.environment !== 'Production' && !this.allowSandbox) {
+      return { kind: 'ignored', gate: 2, msg: ev.environment + ' purchases are free test purchases. The service ignores them unless built with WithAllowSandbox.' };
+    }
+    if (!ev.userId && ev.supersedes && ev.supersedes !== ev.tx) {
+      var old = this.chains[this._key(ev.source, ev.supersedes)];
+      if (old) { ev.userId = old.userId; ev.inherited = true; }
+    }
+    var res = this._storeApply(ev, function (cur) { return applyEvent(cur, ev); });
+    var out = { kind: res.kind, ev: ev, ent: res.ent, before: res.before, reason: res.reason };
+    if (res.kind === 'error') { out.gate = 3; return out; }
+    if (ev.supersedes && ev.supersedes !== ev.tx) {
+      out.superseded = this._supersede(ev);
+    }
+    return out;
+  };
+
+  Service.prototype._supersede = function (ev) {
+    var old = { id: ev.id + '#supersede', source: ev.source, tx: ev.supersedes, state: 'expired', occurredAt: ev.occurredAt };
+    var res = this._storeApply(old, function (cur) {
+      if (!cur) return { next: { source: old.source, tx: old.tx, state: 'expired', updatedAt: old.occurredAt, version: 1, userId: '', productId: '', expiresAt: 0 } };
+      if (isTerminal(cur.state) || cur.state === 'expired') return { stale: 'already ended' };
+      return applyEvent(cur, old);
+    });
+    return res.kind === 'applied' ? (res.before ? 'closed' : 'tombstone') : 'none';
+  };
+
+  // Service.IsActive
+  Service.prototype.isActive = function (userId, productId, now) {
+    for (var i = 0; i < this.order.length; i++) {
+      var e = this.chains[this.order[i]];
+      if (e.userId !== userId || !userId) continue;
+      if (e.environment && e.environment !== 'Production' && !this.allowSandbox) continue;
+      if (e.productId === productId && entActive(e, now)) return true;
+    }
+    return false;
+  };
+
+  root.Engine = { d: d, fmt: fmt, DAY: DAY, applyEvent: applyEvent, entActive: entActive,
+    appleToEvent: appleToEvent, googleToEvent: googleToEvent, Service: Service, isTerminal: isTerminal };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.Engine;
+})(typeof window !== 'undefined' ? window : globalThis);

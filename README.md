@@ -1,5 +1,7 @@
 # go-entitlements
 
+**[Illustrated explainer with an interactive simulator](https://tggo.github.io/go-entitlements/)**
+
 A Go library that turns App Store Server Notifications V2 and Google Play Real-Time Developer Notifications into one ordered, idempotent subscription state per user and product. You mount two HTTP handlers, and your code asks one question: does this user currently have access to this product.
 
 Status: v0. The core, both parsers, the in-memory and Postgres stores and the HTTP handlers are tested end to end, but the API may change between minor versions until v1. Changes are listed in the release notes.

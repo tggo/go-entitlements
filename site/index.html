@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>go-entitlements explained</title>
+<meta name="description" content="How go-entitlements turns App Store and Google Play subscription notifications into one reliable answer: does this user have access. With a simulator you can send messages to.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='7' width='26' height='18' rx='2' fill='%232b4fd8'/%3E%3Cpath d='M4 9l12 9 12-9' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" class="a-m"/></marker>
+    <marker id="ar-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" class="a-ok"/></marker>
+    <marker id="ar-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" class="a-bad"/></marker>
+    <symbol id="envelope" viewBox="0 0 48 34"><rect x="1" y="1" width="46" height="32" rx="3" style="fill:var(--panel);stroke:currentColor;stroke-width:2"/><path d="M2 3 L24 20 L46 3" style="fill:none;stroke:currentColor;stroke-width:2"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top">go-entitlements</a>
+    <nav aria-label="Sections">
+      <a href="#simulator">Simulator</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#states">States</a>
+      <a href="#http">HTTP codes</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="https://github.com/tggo/go-entitlements">GitHub</a>
+    </nav>
+    <button class="theme" id="theme" type="button" aria-label="Switch between light and dark theme">Theme</button>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap" id="top">
+
+<section class="hero" aria-labelledby="h-hero">
+  <div class="hero-grid"><div><h1 id="h-hero">Has this user paid? Answer it from the store&rsquo;s messages.</h1>
+  <p class="lede">go-entitlements is a Go library for apps that sell subscriptions through the App Store and Google Play. The stores send your server messages about every purchase, renewal and refund. The library checks each message, puts them in order, and keeps one current record per subscription. Your code then asks one question: does this user have access.</p>
+  <div class="cta">
+    <a class="btn" href="#simulator">Send messages to it</a>
+    <a class="btn ghost" href="https://github.com/tggo/go-entitlements">View on GitHub</a>
+  </div>
+  </div>
+  <aside class="receipt" aria-label="Example of the record the library keeps">
+    <p class="rc-t">The whole point, as one record</p>
+    <dl>
+      <div><dt>User</dt><dd class="code">u-7e3f</dd></div>
+      <div><dt>Product</dt><dd class="code">pro.monthly</dd></div>
+      <div><dt>State</dt><dd><span class="pill s-active">active</span></dd></div>
+      <div><dt>Expires</dt><dd>Apr 1</dd></div>
+      <div><dt>Version</dt><dd>3 events applied</dd></div>
+    </dl>
+    <p class="rc-q">IsActive(&ldquo;u-7e3f&rdquo;, &ldquo;pro.monthly&rdquo;) returns <b>true</b></p>
+  </aside>
+  </div>
+
+  <h2 style="margin-top:48px" id="h-how">How a subscription reaches your server</h2>
+  <p class="prose">A user buys a subscription inside your app, but the money and the billing belong to the store. Your server is not in that conversation. It only learns what happened because the store calls a web address you registered, and that call is the notification.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 250" role="img" aria-labelledby="d1t d1d">
+      <title id="d1t">How a subscription reaches your server</title>
+      <desc id="d1d">The user's app pays the store. The store sends a signed notification to your server. Your app later asks your server whether the user has access.</desc>
+      <rect class="box" x="10" y="60" width="140" height="90" rx="4"/>
+      <text class="h" x="80" y="96" text-anchor="middle">Your app</text>
+      <text class="s m" x="80" y="118" text-anchor="middle">on the user&rsquo;s phone</text>
+      <rect class="box" x="272" y="60" width="176" height="90" rx="4"/>
+      <text class="h" x="360" y="96" text-anchor="middle">The store</text>
+      <text class="s m" x="360" y="118" text-anchor="middle">App Store or Google Play</text>
+      <rect class="box acc" x="560" y="60" width="150" height="90" rx="4" style="stroke-width:2.5"/>
+      <text class="h" x="635" y="96" text-anchor="middle">Your server</text>
+      <text class="s m" x="635" y="118" text-anchor="middle">runs go-entitlements</text>
+      <path class="ln" d="M150 105 H270" marker-end="url(#ar)"/>
+      <text class="s b" x="210" y="92" text-anchor="middle">1 The user pays</text>
+      <path class="ln" d="M448 105 H558" marker-end="url(#ar)"/>
+      <text class="s b" x="503" y="92" text-anchor="middle">2 The store</text>
+      <text class="s m" x="503" y="127" text-anchor="middle">sends a message</text>
+      <path class="ln dash" d="M635 152 V205 H80 V152" marker-end="url(#ar)"/>
+      <text class="s b" x="360" y="196" text-anchor="middle">3 Your app asks: does this user have Pro?</text>
+      <text class="s m" x="360" y="230" text-anchor="middle">Renewals, refunds and failed payments happen later with no app open, so step 2 repeats for the life of the subscription.</text>
+    </svg>
+    </div>
+    <figcaption>Step 2 is the hard part. The rest of this page is about it.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="h-problem" id="problem">
+  <h2 id="h-problem">Why you cannot trust the messages as they arrive</h2>
+  <p class="prose">If your server simply did what each message says, it would sometimes grant access it should not, or take it away from someone who paid. Five things go wrong in practice.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 310" role="img" aria-labelledby="d2t d2d">
+      <title id="d2t">Messages sent in order arrive late, twice, early, or forged</title>
+      <desc id="d2d">The store sends three messages: subscribed, renewed, refunded. Your server receives subscribed, then refunded early, then refunded again as a duplicate, then the renewal late, and a forged message from someone who is not the store.</desc>
+      <text class="b" x="10" y="22">The store sends</text>
+      <g class="env" style="color:var(--ok)"><use href="#envelope" x="30" y="36" width="54" height="38"/></g>
+      <g class="env" style="color:var(--ok)"><use href="#envelope" x="150" y="36" width="54" height="38"/></g>
+      <g class="env" style="color:var(--ok)"><use href="#envelope" x="270" y="36" width="54" height="38"/></g>
+      <text class="s b" x="57" y="94" text-anchor="middle">1 Subscribed</text>
+      <text class="s b" x="177" y="94" text-anchor="middle">2 Renewed</text>
+      <text class="s b" x="297" y="94" text-anchor="middle">3 Refunded</text>
+      <rect class="box" x="400" y="28" width="310" height="76" rx="4"/>
+      <text class="s b" x="414" y="50">Two formats</text>
+      <text class="s m" x="414" y="70">Apple: a signed token with the details inside.</text>
+      <text class="s m" x="414" y="89">Google: a short ping with no state at all.</text>
+
+      <text class="b" x="710" y="150" text-anchor="end">Your server receives</text>
+      <g class="env" style="color:var(--ok)"><use href="#envelope" x="30" y="166" width="54" height="38"/></g>
+      <g class="env" style="color:var(--warn)"><use href="#envelope" x="160" y="166" width="54" height="38"/></g>
+      <g class="env" style="color:var(--dup)"><use href="#envelope" x="290" y="166" width="54" height="38"/></g>
+      <g class="env" style="color:var(--warn)"><use href="#envelope" x="420" y="166" width="54" height="38"/></g>
+      <g class="env" style="color:var(--bad)"><use href="#envelope" x="560" y="166" width="54" height="38"/></g>
+      <text class="b" x="57" y="201" text-anchor="middle" style="font-size:13px">1</text>
+      <text class="b" x="187" y="201" text-anchor="middle" style="font-size:13px">3</text>
+      <text class="b" x="317" y="201" text-anchor="middle" style="font-size:13px">3</text>
+      <text class="b" x="447" y="201" text-anchor="middle" style="font-size:13px">2</text>
+      <text class="b tbad" x="587" y="201" text-anchor="middle" style="font-size:14px">?</text>
+      <path class="ln dash" d="M57 100 V164" marker-end="url(#ar)"/>
+      <path class="ln dash" d="M297 100 L190 164" marker-end="url(#ar)"/>
+      <path class="ln dash" d="M297 100 L318 164" marker-end="url(#ar)"/>
+      <path class="ln dash" d="M177 100 L445 164" marker-end="url(#ar)"/>
+      <text class="s b" x="57" y="228" text-anchor="middle">On time</text>
+      <text class="s b twarn" x="187" y="228" text-anchor="middle">Early</text>
+      <text class="s m" x="187" y="246" text-anchor="middle">came before 2</text>
+      <text class="s b tdup" x="317" y="228" text-anchor="middle">Duplicate</text>
+      <text class="s m" x="317" y="246" text-anchor="middle">the store retried</text>
+      <text class="s b twarn" x="447" y="228" text-anchor="middle">Late</text>
+      <text class="s m" x="447" y="246" text-anchor="middle">should be first</text>
+      <text class="s b tbad" x="587" y="228" text-anchor="middle">Forged</text>
+      <text class="s m" x="587" y="246" text-anchor="middle">not from the store</text>
+      <text class="s m" x="10" y="288">Applying these in arrival order would refund the user, then renew them. The record would say &ldquo;active&rdquo; after a refund.</text>
+    </svg>
+    </div>
+    <figcaption>Stores retry whenever your server does not answer 200, and they do not promise order. Anyone who finds your webhook address can post to it.</figcaption>
+  </figure>
+  <ol class="plain" style="max-width:68ch;padding-left:22px">
+    <li><b>Forgery.</b> A message must be proven to come from the store before it is believed.</li>
+    <li><b>Duplicates.</b> The same message can arrive many times. Applying it twice must equal applying it once.</li>
+    <li><b>Out-of-order delivery.</b> An older message that arrives late must not overwrite newer knowledge.</li>
+    <li><b>Google carries no state.</b> Its ping only says that something changed for a purchase token. You have to ask Google what the state is now.</li>
+    <li><b>Upgrades change the identity.</b> On Google an upgrade creates a new purchase token, so one customer briefly looks like two subscriptions.</li>
+  </ol>
+</section>
+
+<section id="simulator" aria-labelledby="h-sim">
+  <h2 id="h-sim">Try it: send the messages yourself</h2>
+  <p class="prose">Pick a message from the tray, or drag it onto the pipeline. It runs through the same rules as the Go library, ported line by line (sources are named in <code>engine.js</code>). On the right is the record the library keeps, and whether the user has access on the date you choose. Send the same message twice, or send an old one after a new one, and see what the store gets back.</p>
+
+  <div id="sim">
+    <div class="sim-grid">
+      <div class="panel">
+        <h3 id="h-tray">Messages to send</h3>
+        <div class="tabs" role="tablist" aria-label="Store">
+          <button role="tab" id="tab-apple" aria-selected="true" aria-controls="tray" type="button">Apple</button>
+          <button role="tab" id="tab-google" aria-selected="false" aria-controls="tray" type="button">Google Play</button>
+        </div>
+        <div id="tray" role="tabpanel" aria-label="Messages"></div>
+        <div class="ctrls">
+          <label><input type="checkbox" id="dbdown"> Your database is down</label>
+          <label id="playdown-wrap" hidden><input type="checkbox" id="playdown"> Play API is down</label>
+          <label><input type="checkbox" id="sandbox"> Allow test purchases</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 id="h-pipe">What happens to it</h3>
+        <div id="mouth" aria-label="Drop a message here">
+          <ol id="gates" aria-label="Pipeline steps"></ol>
+          <p class="hint">Drop a message anywhere in this box.</p>
+        </div>
+        <div class="result" id="result" aria-live="polite">
+          <h4 id="result-title">Nothing sent yet</h4>
+          <div id="stamp"></div>
+          <div class="detail"><p id="code"></p><p id="why"></p></div>
+        </div>
+        <h4 class="logh">Deliveries so far</h4>
+        <ul id="log" aria-label="Recent deliveries"></ul>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="row">
+        <h3 style="margin:0">What the library has stored</h3>
+        <button class="theme reset" id="reset" type="button">Reset</button>
+      </div>
+      <div class="ledger-wrap">
+        <table>
+          <caption class="sr" style="position:absolute;left:-999px">Stored subscriptions</caption>
+          <thead><tr><th scope="col">Store</th><th scope="col">Chain</th><th scope="col">State</th><th scope="col">Expires</th><th scope="col">Version</th><th scope="col">Last event</th></tr></thead>
+          <tbody id="ledger-body"></tbody>
+        </table>
+      </div>
+      <div class="access-row">
+        <span>Does user <code>u-7e3f</code> have <code>pro.monthly</code> on <b id="nowlabel">Mar 15</b>?</span>
+        <span id="access" class="access no" role="status">No access</span>
+        <label>Date <input type="range" id="now" aria-label="Date to check access on"></label>
+      </div>
+    </div>
+
+    <h3>Or watch a scenario</h3>
+    <ul id="scenarios"></ul>
+  </div>
+  <p class="hint prose">Apple messages are modeled with the fields the library reads. Google messages include what <code>subscriptionsv2.get</code> would return. The simulator is not a recording of real traffic.</p>
+</section>
+
+<section id="pipeline" aria-labelledby="h-pipeline">
+  <h2 id="h-pipeline">From a signed message to a stored answer</h2>
+  <p class="prose">Both stores end up as the same small <code>Event</code>: an ID, a user, a transaction, a product, a state, an expiry and the time it was signed. After that the library does not care which store it came from.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 600" role="img" aria-labelledby="d3t d3d">
+      <title id="d3t">The pipeline from webhook to stored entitlement</title>
+      <desc id="d3d">Apple lane: receive signed token, verify the certificate chain, map to a state. Google lane: receive a push, check the push token, fetch the subscription from the Play API, map to a state. Both produce one Event. Service.Process skips test purchases, then Store.Apply skips duplicates, checks order and saves. The stored entitlement answers IsActive.</desc>
+      <text class="h" x="20" y="22">Apple</text>
+      <text class="h" x="390" y="22">Google Play</text>
+      <rect class="box" x="20" y="36" width="310" height="52" rx="4"/>
+      <text class="b" x="34" y="58">POST to your Apple webhook</text><text class="s m" x="34" y="77">The body is one signed token (JWS)</text>
+      <rect class="box acc" x="20" y="124" width="310" height="62" rx="4"/>
+      <text class="b" x="34" y="146">Verify</text><text class="s m" x="34" y="165">Chain ends at Apple Root CA - G3, then the signature,</text><text class="s m" x="34" y="180">bundle ID and environment</text>
+      <rect class="box" x="20" y="222" width="310" height="52" rx="4"/>
+      <text class="b" x="34" y="244">Map</text><text class="s m" x="34" y="263">notificationType and subtype become a state</text>
+      <path class="ln" d="M175 88 V122" marker-end="url(#ar)"/><path class="ln" d="M175 186 V220" marker-end="url(#ar)"/>
+
+      <rect class="box" x="390" y="36" width="310" height="50" rx="4"/>
+      <text class="b" x="404" y="57">POST to your Google webhook</text><text class="s m" x="404" y="76">A Pub/Sub push: a ping, no state</text>
+      <rect class="box acc" x="390" y="108" width="310" height="50" rx="4"/>
+      <text class="b" x="404" y="129">Check the push token</text><text class="s m" x="404" y="148">OIDC token: your audience and service account</text>
+      <rect class="box" x="390" y="180" width="310" height="50" rx="4"/>
+      <text class="b" x="404" y="201">Ask Google for the real state</text><text class="s m" x="404" y="220">purchases.subscriptionsv2.get</text>
+      <rect class="box" x="390" y="252" width="310" height="44" rx="4"/>
+      <text class="b" x="404" y="273">Map</text><text class="s m" x="404" y="291">subscriptionState becomes a state</text>
+      <path class="ln" d="M545 86 V106" marker-end="url(#ar)"/><path class="ln" d="M545 158 V178" marker-end="url(#ar)"/><path class="ln" d="M545 230 V250" marker-end="url(#ar)"/>
+
+      <path class="ln" d="M175 274 V312 H300 V330" marker-end="url(#ar)"/><path class="ln" d="M545 296 V312 H420 V330" marker-end="url(#ar)"/>
+      <rect class="box thick" x="140" y="332" width="440" height="56" rx="4"/>
+      <text class="h" x="360" y="356" text-anchor="middle">Event</text>
+      <text class="s m" x="360" y="376" text-anchor="middle">ID, user, transaction, product, state, expires, signed time</text>
+      <path class="ln" d="M360 388 V412" marker-end="url(#ar)"/>
+      <rect class="sunk" x="60" y="414" width="600" height="92" rx="4"/>
+      <text class="h" x="76" y="436">Service.Process</text>
+      <rect class="box" x="76" y="448" width="170" height="46" rx="3"/><text class="s b" x="88" y="468">Test purchase?</text><text class="s m" x="88" y="485">Ignored by default</text>
+      <rect class="box" x="276" y="448" width="170" height="46" rx="3"/><text class="s b" x="288" y="468">Seen before?</text><text class="s m" x="288" y="485">Duplicate, no change</text>
+      <rect class="box" x="476" y="448" width="170" height="46" rx="3"/><text class="s b" x="488" y="468">Older, or not allowed?</text><text class="s m" x="488" y="485">Stale, no change</text>
+      <path class="ln" d="M246 471 H274" marker-end="url(#ar)"/><path class="ln" d="M446 471 H474" marker-end="url(#ar)"/>
+      <path class="ln ok thick" d="M360 506 V528" marker-end="url(#ar-ok)"/>
+      <text class="s b tok" x="372" y="523">otherwise: save</text>
+      <rect class="box ok thick" x="100" y="530" width="320" height="54" rx="4" style="stroke-width:2.4"/>
+      <text class="b" x="114" y="552">Stored entitlement</text><text class="s m" x="114" y="572">state, expires, version, last event time</text>
+      <path class="ln" d="M420 557 H488" marker-end="url(#ar)"/>
+      <rect class="box acc" x="490" y="530" width="210" height="54" rx="4"/>
+      <text class="b" x="504" y="552">IsActive(user, product)</text><text class="s m" x="504" y="572">Your code asks this</text>
+    </svg>
+    </div>
+    <figcaption>Blue outlines are the two places where a message is proven genuine. Green is the only path that changes stored state.</figcaption>
+  </figure>
+
+  <h3>Apple: the certificate chain is the lock</h3>
+  <p class="prose">An Apple notification is a signed token. Its header lists a chain of certificates, called <code>x5c</code>, that should lead to the key that made the signature. The sender writes that header. A forger can write one too. So the library does not ask whether the signature matches the certificates in the header. It asks whether the chain ends at Apple&rsquo;s own root certificate, which is embedded in the library.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 300" role="img" aria-labelledby="d4t d4d">
+      <title id="d4t">Genuine and forged certificate chains</title>
+      <desc id="d4d">A genuine chain goes from the leaf certificate to an intermediate to Apple Root CA G3, which the library trusts. A forged chain goes from an attacker's leaf to an attacker's CA, which does not reach Apple Root CA G3, so it is rejected with 401.</desc>
+      <text class="b" x="10" y="22">Genuine message</text>
+      <rect class="box ok" x="10" y="36" width="190" height="64" rx="4"/><text class="b" x="24" y="60">Leaf</text><text class="s m" x="24" y="80">Apple leaf marker required</text>
+      <rect class="box ok" x="265" y="36" width="190" height="64" rx="4"/><text class="b" x="279" y="60">Intermediate</text><text class="s m" x="279" y="80">Apple marker required</text>
+      <rect class="box ok" x="520" y="36" width="190" height="64" rx="4" style="fill:var(--ok-bg)"/><text class="b" x="534" y="60">Apple Root CA - G3</text><text class="s m" x="534" y="80">embedded in the library</text>
+      <path class="ln ok" d="M200 68 H263" marker-end="url(#ar-ok)"/><path class="ln ok" d="M455 68 H518" marker-end="url(#ar-ok)"/>
+      <text class="s m" x="232" y="90" text-anchor="middle" style="font-size:12px">signed by</text><text class="s m" x="487" y="90" text-anchor="middle" style="font-size:12px">signed by</text>
+      <text class="s" x="10" y="124">Then the signature itself is checked with the leaf key, and the bundle ID and environment must match.</text>
+
+      <text class="b" x="10" y="170">Forged message</text>
+      <rect class="box bad" x="10" y="184" width="190" height="64" rx="4"/><text class="b" x="24" y="208">Attacker&rsquo;s leaf</text><text class="s m" x="24" y="228">self-made certificate</text>
+      <rect class="box bad" x="265" y="184" width="190" height="64" rx="4"/><text class="b" x="279" y="208">Attacker&rsquo;s CA</text><text class="s m" x="279" y="228">self-made authority</text>
+      <rect class="box dash" x="520" y="184" width="190" height="64" rx="4" style="stroke-dasharray:5 5"/><text class="b m" x="534" y="208">Apple Root CA - G3</text><text class="s m" x="534" y="228">never reached</text>
+      <path class="ln bad" d="M200 216 H263" marker-end="url(#ar-bad)"/>
+      <path class="ln bad dash" d="M455 216 H500"/>
+      <path class="ln bad thick" d="M474 202 L494 230 M494 202 L474 230"/>
+      <text class="s b tbad" x="10" y="278">Rejected with 401. The body is never trusted.</text>
+    </svg>
+    </div>
+    <figcaption>Checking only that the signature matches the header&rsquo;s own certificates proves nothing, because the attacker chose both.</figcaption>
+  </figure>
+
+  <h3>Google: ask, do not believe</h3>
+  <p class="prose">A Google push is authenticated by a Pub/Sub token on the request, which the handler requires. Even then the push says only that something happened to a purchase token. The library calls <code>purchases.subscriptionsv2.get</code> and builds the state from Google&rsquo;s answer, so a forged or replayed push cannot invent a state. A voided-purchase push is also checked against the subscription&rsquo;s latest order before it refunds anything.</p>
+</section>
+
+<section id="states" aria-labelledby="h-states">
+  <h2 id="h-states">The seven states</h2>
+  <p class="prose">Whatever the store calls it, each subscription is in one of seven states. Two of them grant access: <code>active</code> and <code>grace</code>, and only until the expiry date. Grace is the period when a renewal payment failed but the store is still retrying, so the user keeps access.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 380" role="img" aria-labelledby="d5t d5d">
+      <title id="d5t">Subscription states and what can change them</title>
+      <desc id="d5d">Five open states, active, grace, billing retry, paused and expired, replace one another freely: the newest event decides. A refund, revoke or voided purchase moves the subscription into refunded or revoked, which are terminal. From there only a new purchase or renewal, or an Apple refund reversal, strictly newer than the refund, can bring it back. Expiry, retry, grace, pause and auto-renew messages are ignored as stale.</desc>
+      <rect class="sunk" x="10" y="14" width="290" height="270" rx="6"/>
+      <text class="h" x="26" y="40">Open states</text>
+      <text class="s m" x="26" y="58">The newest event decides which one.</text>
+      <rect class="box ok fok" x="26" y="76" width="118" height="44" rx="4" style="stroke-width:2.2"/><text class="b" x="85" y="103" text-anchor="middle">active</text>
+      <rect class="box ok fok" x="164" y="76" width="118" height="44" rx="4" style="stroke-width:2.2"/><text class="b" x="223" y="103" text-anchor="middle">grace</text>
+      <rect class="box" x="26" y="140" width="118" height="44" rx="4"/><text class="b" x="85" y="167" text-anchor="middle">billing retry</text>
+      <rect class="box" x="164" y="140" width="118" height="44" rx="4"/><text class="b" x="223" y="167" text-anchor="middle">paused</text>
+      <rect class="box" x="95" y="204" width="118" height="44" rx="4"/><text class="b" x="154" y="231" text-anchor="middle">expired</text>
+      <text class="s tok b" x="26" y="272">Green: grants access until the expiry date</text>
+
+      <rect class="sunk fbad" x="470" y="14" width="240" height="270" rx="6"/>
+      <text class="h" x="486" y="40">Terminal states</text>
+      <text class="s m" x="486" y="58">Closed, except as shown.</text>
+      <rect class="box bad" x="490" y="86" width="200" height="56" rx="4" style="stroke-width:2.4"/><rect class="box bad" x="495" y="91" width="190" height="46" rx="2" style="fill:none"/><text class="b" x="590" y="120" text-anchor="middle">refunded</text>
+      <rect class="box bad" x="490" y="172" width="200" height="56" rx="4" style="stroke-width:2.4"/><rect class="box bad" x="495" y="177" width="190" height="46" rx="2" style="fill:none"/><text class="b" x="590" y="205" text-anchor="middle">revoked</text>
+
+      <path class="ln thick" d="M300 108 H468" marker-end="url(#ar)"/>
+      <text class="s b" x="384" y="96" text-anchor="middle">Refund, revoke,</text><text class="s b" x="384" y="130" text-anchor="middle">voided purchase</text>
+      <path class="ln ok thick" d="M468 168 H302" marker-end="url(#ar-ok)"/>
+      <text class="s b tok" x="384" y="158" text-anchor="middle">Newer renewal or</text><text class="s b tok" x="384" y="186" text-anchor="middle">purchase; refund reversed</text>
+      <path class="ln bad dash" d="M468 252 H356"/><path class="ln bad thick" d="M344 242 L328 262 M328 242 L344 262"/>
+      <text class="s b tbad" x="385" y="232" text-anchor="middle">Expired, retry, grace,</text><text class="s b tbad" x="385" y="276" text-anchor="middle">pause, auto-renew</text>
+
+      <text class="s" x="10" y="314">Moving back always needs an event strictly newer than the refund. Refunded and revoked can swap with each other.</text>
+      <text class="s" x="10" y="338">A refund of an older renewal, while a newer one still runs, is ignored as stale (Apple).</text>
+      <text class="s m" x="10" y="368">Source: statemachine.go (Apply) and the state mapping in apple/mapper.go and google/parser.go.</text>
+    </svg>
+    </div>
+    <figcaption>The reason for the closed door: after a refund, stores still send housekeeping messages (&ldquo;auto-renew turned off&rdquo;). Those must not hand the access back.</figcaption>
+  </figure>
+
+  <h3>What each store message becomes</h3>
+  <div class="tscroll" tabindex="0" role="region" aria-label="Table, scrolls sideways on narrow screens"><table class="facts">
+    <thead><tr><th scope="col">Store message</th><th scope="col">State</th></tr></thead>
+    <tbody>
+      <tr><td>Apple SUBSCRIBED, DID_RENEW</td><td><span class="pill s-active">active</span></td></tr>
+      <tr><td>Apple DID_FAIL_TO_RENEW with GRACE_PERIOD</td><td><span class="pill s-grace">grace</span> until the grace period ends</td></tr>
+      <tr><td>Apple DID_FAIL_TO_RENEW, GRACE_PERIOD_EXPIRED</td><td><span class="pill s-billing_retry">billing retry</span></td></tr>
+      <tr><td>Apple EXPIRED</td><td><span class="pill s-expired">expired</span></td></tr>
+      <tr><td>Apple REFUND, REVOKE</td><td><span class="pill s-refunded">refunded</span> <span class="pill s-revoked">revoked</span></td></tr>
+      <tr><td>Apple plan or renewal-status changes, offers, extensions</td><td>The state Apple reports, and never lifts a refund</td></tr>
+      <tr><td>Google ACTIVE, CANCELED (until expiry)</td><td><span class="pill s-active">active</span></td></tr>
+      <tr><td>Google IN_GRACE_PERIOD, ON_HOLD, PAUSED</td><td><span class="pill s-grace">grace</span> <span class="pill s-billing_retry">billing retry</span> <span class="pill s-paused">paused</span></td></tr>
+      <tr><td>Google EXPIRED, voided purchase</td><td><span class="pill s-expired">expired</span> <span class="pill s-refunded">refunded</span></td></tr>
+      <tr><td>Test messages, one-time charges, price changes</td><td>Ignored with HTTP 200</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose src">Full tables: the README in the repository. An active or grace event with no expiry date is refused instead of granting access forever.</p>
+</section>
+
+<section id="ordering" aria-labelledby="h-order">
+  <h2 id="h-order">Duplicates and late messages</h2>
+  <p class="prose">Every event passes the same four questions, in this order. The first two are what make redelivery safe.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 500" role="img" aria-labelledby="d6t d6d">
+      <title id="d6t">Questions every event is asked</title>
+      <desc id="d6d">One: was this event ID seen before? Then it is a duplicate. Two: is it older than the stored update time? Then it is stale. Three: for Apple, is it a refund of an older transaction than the chain runs to? Then it is stale. Four: is the chain refunded or revoked and the event not allowed to lift that? Then it is stale. Otherwise the state is written and the version goes up by one.</desc>
+      <rect class="box" x="10" y="10" width="360" height="62" rx="4"/><text class="b" x="24" y="36">1 Seen this event ID before?</text><text class="s m" x="24" y="57">Per store: Apple notification ID, Pub/Sub message ID</text>
+      <rect class="box dup fdup" x="440" y="14" width="270" height="54" rx="4"/><text class="b" x="454" y="38">Duplicate</text><text class="s m" x="454" y="57">Nothing changes. HTTP 200.</text>
+      <path class="ln" d="M370 41 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="34" text-anchor="middle">yes</text>
+
+      <path class="ln" d="M190 72 V108" marker-end="url(#ar)"/><text class="s b" x="202" y="95">no</text>
+      <rect class="box" x="10" y="110" width="360" height="62" rx="4"/><text class="b" x="24" y="136">2 Older than the stored update time?</text><text class="s m" x="24" y="157">Equal time counts as newer (ties happen)</text>
+      <rect class="box warn fwarn" x="440" y="114" width="270" height="54" rx="4"/><text class="b" x="454" y="138">Stale</text><text class="s m" x="454" y="157">ID recorded, state kept. HTTP 200.</text>
+      <path class="ln" d="M370 141 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="134" text-anchor="middle">yes</text>
+
+      <path class="ln" d="M190 172 V208" marker-end="url(#ar)"/><text class="s b" x="202" y="195">no</text>
+      <rect class="box" x="10" y="210" width="360" height="72" rx="4"/><text class="b" x="24" y="236">3 Apple refund of an older transaction?</text><text class="s m" x="24" y="256">Its expiry is before the chain&rsquo;s. A newer renewal</text><text class="s m" x="24" y="272">is still paid, so the refund does not end the chain.</text>
+      <rect class="box warn fwarn" x="440" y="218" width="270" height="54" rx="4"/><text class="b" x="454" y="242">Stale</text><text class="s m" x="454" y="261">A newer transaction still runs.</text>
+      <path class="ln" d="M370 246 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="239" text-anchor="middle">yes</text>
+
+      <path class="ln" d="M190 282 V318" marker-end="url(#ar)"/><text class="s b" x="202" y="305">no</text>
+      <rect class="box" x="10" y="320" width="360" height="72" rx="4"/><text class="b" x="24" y="346">4 Chain refunded or revoked?</text><text class="s m" x="24" y="366">And the event is not a new purchase, a renewal or a</text><text class="s m" x="24" y="382">refund reversal that is strictly newer?</text>
+      <rect class="box warn fwarn" x="440" y="328" width="270" height="54" rx="4"/><text class="b" x="454" y="352">Stale</text><text class="s m" x="454" y="371">The chain stays closed.</text>
+      <path class="ln" d="M370 356 H438" marker-end="url(#ar)"/><text class="s b" x="404" y="349" text-anchor="middle">yes</text>
+
+      <path class="ln ok" d="M190 392 V428" marker-end="url(#ar-ok)"/><text class="s b tok" x="202" y="415">no</text>
+      <rect class="box ok fok" x="10" y="430" width="360" height="56" rx="4" style="stroke-width:2.4"/><text class="b" x="24" y="454">Apply</text><text class="s m" x="24" y="474">Write state and event ID together. Version + 1.</text>
+    </svg>
+    </div>
+    <figcaption>Stale events are recorded as processed too, so a redelivery of a stale event is a plain duplicate next time.</figcaption>
+  </figure>
+  <p class="prose">The ordering key is the time the store signed the message (<code>signedDate</code> on Apple, <code>eventTimeMillis</code> on Google), not the time it arrived. Google events dated more than five minutes ahead of the server clock are rejected, because a forged far-future time would make every genuine later event look old.</p>
+  <p class="prose">The duplicate check and the state change happen in one transaction. Two copies of one message arriving at the same moment cannot both apply.</p>
+</section>
+
+<section id="upgrades" aria-labelledby="h-up">
+  <h2 id="h-up">Upgrades on Google create a new token</h2>
+  <p class="prose">When a Google user upgrades or resubscribes, Play issues a new purchase token and names the old one in <code>linkedPurchaseToken</code>. Without care the user would hold two active subscriptions. The library applies the new chain first, then closes the old one, so there is never a moment with no active chain.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 384" role="img" aria-labelledby="d7t d7d">
+      <title id="d7t">Token A is closed when token B replaces it</title>
+      <desc id="d7d">Token A is active from January 1 to February 20. At the upgrade event on February 20, token B starts and token A is closed. A late event for token A dated February 15 arrives after the upgrade and is stale. If token A had never been seen, a tombstone row is written so its late events are still stale.</desc>
+      <g class="env" style="color:var(--warn)"><use href="#envelope" x="350" y="4" width="50" height="35"/></g>
+      <text class="s b twarn" x="412" y="20">Feb 15 event for A</text><text class="s m" x="412" y="38">arrives after the upgrade</text>
+      <path class="ln warn dash" d="M375 42 V116" marker-end="url(#ar)"/>
+      <g transform="translate(0,56)">
+      <line class="ln" x1="30" y1="40" x2="700" y2="40"/>
+      <text class="s m" x="30" y="30">Jan 1</text><text class="s b" x="420" y="30" text-anchor="middle">Feb 20</text><text class="s m" x="700" y="30" text-anchor="end">Mar 20</text>
+      <rect x="30" y="64" width="390" height="40" rx="3" style="fill:var(--ok-bg);stroke:var(--ok);stroke-width:1.5"/><text class="b" x="44" y="89">Token A is active</text>
+      <rect x="420" y="64" width="280" height="40" rx="3" style="fill:var(--mute-bg);stroke:var(--line)"/><text class="s m" x="434" y="89">closed as expired at Feb 20</text>
+      <rect x="420" y="124" width="280" height="40" rx="3" style="fill:var(--ok-bg);stroke:var(--ok);stroke-width:1.5"/><text class="b" x="434" y="149">Token B is active</text>
+      <line class="ln dash" x1="420" y1="44" x2="420" y2="200"/>
+      <path class="ln thick" d="M420 112 V122" marker-end="url(#ar)"/>
+      <text class="s" x="30" y="148">Event for token B, with</text><text class="s" x="30" y="166">linkedPurchaseToken = A</text>
+      <path class="ln" d="M205 154 H415" marker-end="url(#ar)"/>
+
+      <text class="s b twarn" x="30" y="214">Stale: A is already closed at Feb 20,</text><text class="s b twarn" x="30" y="232">and Feb 15 is older.</text>
+
+      <rect class="sunk" x="10" y="262" width="700" height="56" rx="4"/>
+      <text class="b" x="24" y="286">If A was never seen first</text><text class="s m" x="24" y="306">The library writes a tombstone for A: expired, dated Feb 20. A&rsquo;s late events still come out stale instead of reviving it.</text>
+    </g>
+    </svg>
+    </div>
+    <figcaption>If token B carries no account ID, the user is taken from token A&rsquo;s record.</figcaption>
+  </figure>
+</section>
+
+<section id="http" aria-labelledby="h-http">
+  <h2 id="h-http">What your server tells the store</h2>
+  <p class="prose">The HTTP status is an instruction to the store: stop sending this, or send it again. The rule behind it is whether a retry could change the outcome.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 410" role="img" aria-labelledby="d8t d8d">
+      <title id="d8t">HTTP status by whether a retry can help</title>
+      <desc id="d8d">200: applied, duplicate, stale, ignored, unsupported, wrong package, unknown purchase token, or an event that can never be stored. The store stops retrying. 400, 401, 405, 413: malformed body, bad signature or push token, not a POST, body over 1 MiB. Rejected for good and logged as errors. 500: database failure, Play API timeout, server error or rate limit, or wrong Play credentials. The store retries.</desc>
+      <rect x="10" y="10" width="700" height="154" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+      <text class="tok" x="30" y="62" style="font:800 40px var(--display);fill:var(--ok)">200</text>
+      <text class="b" x="30" y="86">Stop sending this one</text><text class="s m" x="30" y="104">A retry would change nothing.</text>
+      <g class="s"><text x="230" y="38">&bull; Applied</text><text x="230" y="60">&bull; Duplicate</text><text x="230" y="82">&bull; Stale (older than what is stored)</text><text x="230" y="104">&bull; Ignored: TEST, sandbox, other types</text>
+      <text x="230" y="126">&bull; Another app&rsquo;s package name</text><text x="230" y="148">&bull; Unknown or expired purchase token</text></g>
+            <rect x="10" y="176" width="700" height="112" rx="4" style="fill:var(--bad-bg);stroke:var(--bad)"/>
+      <text x="30" y="226" style="font:800 30px var(--display);fill:var(--bad)">4xx</text>
+      <text class="b" x="30" y="248">Rejected for good</text><text class="s m" x="30" y="266">Logged at error level.</text>
+      <g class="s"><text x="230" y="202">&bull; 401 Bad Apple signature, or bad Pub/Sub token</text><text x="230" y="224">&bull; 400 Malformed body</text><text x="230" y="246">&bull; 405 Not a POST</text><text x="230" y="268">&bull; 413 Body over 1 MiB (the default limit)</text></g>
+      <rect x="10" y="300" width="700" height="100" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+      <text x="30" y="350" style="font:800 40px var(--display);fill:var(--warn)">500</text>
+      <text class="b" x="30" y="372">Send it again later</text><text class="s m" x="30" y="390">Nothing was recorded, so a retry works.</text>
+      <g class="s"><text x="230" y="326">&bull; The database failed</text><text x="230" y="348">&bull; The Play API timed out, errored or rate-limited</text><text x="230" y="370">&bull; Play credentials or permissions are wrong (fix needed)</text></g>
+    </svg>
+    </div>
+    <figcaption>Answering 500 for a message that can never succeed would make the store retry it for days. Answering 200 for a failed save would lose the event. Each case gets the code that matches.</figcaption>
+  </figure>
+</section>
+
+<section id="defaults" aria-labelledby="h-def">
+  <h2 id="h-def">Defaults that fail safe</h2>
+  <p class="prose">The risky choices are off until you turn them on, and the unsafe switches have names that say so.</p>
+  <div class="tscroll" tabindex="0" role="region" aria-label="Table, scrolls sideways on narrow screens"><table class="facts">
+    <thead><tr><th scope="col">By default</th><th scope="col">Why</th><th scope="col">Opt out</th></tr></thead>
+    <tbody>
+      <tr><td>Test purchases are ignored and never grant access</td><td>Sandbox and TestFlight purchases are free</td><td><code>WithAllowSandbox()</code> for staging</td></tr>
+      <tr><td>Google push needs authentication; the handler will not start without it</td><td>Otherwise anyone who knows a purchase token could forge a refund</td><td><code>WithInsecureNoAuth()</code></td></tr>
+      <tr><td>The Apple bundle ID is required</td><td>Stops notifications for other apps</td><td><code>WithInsecureAnyBundle()</code></td></tr>
+      <tr><td>Apple chain must end at the embedded Apple Root CA - G3</td><td>The chain in the header is attacker-supplied</td><td><code>WithRootPool</code>, for local demos only</td></tr>
+      <tr><td>An active event with no expiry date is refused</td><td>Otherwise access would never end</td><td>None</td></tr>
+      <tr><td>Request bodies are capped at 1 MiB</td><td>Memory safety</td><td><code>WithMaxBodyBytes</code></td></tr>
+      <tr><td>The Google package name is required and checked before any fetch</td><td>An attacker cannot make your service account query other apps</td><td>None</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose">One thing is left to you: the user ID. The library takes it from <code>appAccountToken</code> (Apple) or <code>obfuscatedExternalAccountId</code> (Google), which your app sets at purchase time. Treat it as a hint from the client, not as authentication.</p>
+</section>
+
+<section id="storage" aria-labelledby="h-store">
+  <h2 id="h-store">Storing the result: one contract, two stores, yours</h2>
+  <p class="prose">The library ships a memory store and a Postgres store. To use another database, implement the <code>Store</code> interface, which has twelve numbered rules, and run the conformance suite against it.</p>
+  <figure class="dia">
+    <div class="scroll">
+    <svg viewBox="0 0 720 330" role="img" aria-labelledby="d9t d9d">
+      <title id="d9t">Store.Apply is one atomic step</title>
+      <desc id="d9d">Inside one transaction Store.Apply records the event ID, reading the current chain, calling the state machine function, and writing the result. A duplicate ID returns early. If the function says stale or ignored, the ID is recorded and nothing else changes. If it fails any other way, nothing is recorded. The storetest suite checks memory, Postgres and your own store.</desc>
+      <rect class="box" x="10" y="20" width="150" height="56" rx="4"/><text class="b" x="24" y="46">Service.Process</text><text class="s m" x="24" y="65">calls Apply(ev, fn)</text>
+      <path class="ln" d="M160 48 H196" marker-end="url(#ar)"/>
+      <rect class="box acc dash" x="198" y="8" width="320" height="226" rx="6" style="stroke-width:2"/>
+      <text class="h" x="214" y="34">One transaction</text>
+      <rect class="box" x="214" y="46" width="288" height="36" rx="3"/><text class="s" x="226" y="69"><tspan class="b">1</tspan>  Is this event ID already recorded?</text>
+      <rect class="box" x="214" y="94" width="288" height="36" rx="3"/><text class="s" x="226" y="117"><tspan class="b">2</tspan>  Read the current chain</text>
+      <rect class="box" x="214" y="142" width="288" height="36" rx="3"/><text class="s" x="226" y="165"><tspan class="b">3</tspan>  Call fn(current): the state machine</text>
+      <rect class="box" x="214" y="190" width="288" height="36" rx="3"/><text class="s" x="226" y="213"><tspan class="b">4</tspan>  Write the chain and the event ID</text>
+      <path class="ln" d="M358 82 V92" marker-end="url(#ar)"/><path class="ln" d="M358 130 V140" marker-end="url(#ar)"/><path class="ln" d="M358 178 V188" marker-end="url(#ar)"/>
+      <rect class="box dup fdup" x="548" y="20" width="162" height="48" rx="4"/><text class="s b" x="560" y="40">Already recorded</text><text class="s" x="560" y="58">Duplicate, fn not called</text>
+      <path class="ln dup" d="M502 64 L546 48" marker-end="url(#ar)"/>
+      <rect class="box warn fwarn" x="548" y="90" width="162" height="62" rx="4"/><text class="s b" x="560" y="110">fn says stale or ignored</text><text class="s" x="560" y="128">ID recorded, nothing</text><text class="s" x="560" y="144">else changes</text>
+      <path class="ln warn" d="M502 160 L546 130" marker-end="url(#ar)"/>
+      <rect class="box bad fbad" x="548" y="164" width="162" height="62" rx="4"/><text class="s b" x="560" y="184">fn fails any other way</text><text class="s" x="560" y="202">Nothing recorded,</text><text class="s" x="560" y="218">so a retry works</text>
+      <path class="ln bad" d="M502 196 L546 196" marker-end="url(#ar-bad)"/>
+
+      <rect class="sunk" x="10" y="256" width="700" height="62" rx="4"/>
+      <text class="b" x="24" y="282">storetest.Run(t, newStore)</text><text class="s m" x="24" y="302">Atomic apply, dedupe, stale outcomes, retry after errors, tombstones, concurrency, cancelled contexts.</text>
+      <rect x="520" y="268" width="56" height="26" rx="13" style="fill:var(--ok-bg);stroke:var(--ok)"/><text class="s b tok" x="548" y="286" text-anchor="middle">memory</text>
+      <rect x="584" y="268" width="62" height="26" rx="13" style="fill:var(--ok-bg);stroke:var(--ok)"/><text class="s b tok" x="615" y="286" text-anchor="middle">postgres</text>
+      <rect x="654" y="268" width="48" height="26" rx="13" style="fill:var(--sunk);stroke:var(--line);stroke-dasharray:4 3"/><text class="s b m" x="678" y="286" text-anchor="middle">yours</text>
+    </svg>
+    </div>
+    <figcaption>Postgres runs Apply at Read Committed and retries serialization failures and deadlocks (SQLSTATE 40001 and 40P01). It keeps each webhook body for audit, so schedule <code>Store.Prune</code>.</figcaption>
+  </figure>
+</section>
+
+<section id="testing" aria-labelledby="h-test">
+  <h2 id="h-test">How it was tested</h2>
+  <p class="prose">Numbers below come from the repository&rsquo;s Definition of Done file, which records what was measured and when.</p>
+  <div class="nums">
+    <div><strong>9,600</strong><span>deliveries across 64 goroutines in the heavy stress run, with supersedes crossing each other</span></div>
+    <div><strong>1,996/s</strong><span>on Postgres with 20 connections; 523/s with 2. Memory store: about 40,000/s or more</span></div>
+    <div><strong>30 s</strong><span>of fuzzing per target for both parsers and the state machine, with no crashers</span></div>
+    <div><strong>5</strong><span>real signed notifications from a live app: one Production TEST, four Sandbox</span></div>
+  </div>
+  <ul class="plain">
+    <li>Unit and integration tests run with <code>-race</code>. Integration tests use real Postgres 17 through Docker, and an end-to-end test drives HTTP, service and Postgres together.</li>
+    <li>Apple payloads in tests are signed by a generated CA, so the full verification path runs. Apple&rsquo;s own library test tokens also verify.</li>
+    <li>Mutation testing with gremlins (<code>make mutate</code>) was used to find and kill surviving mutants. It is not part of CI and no score is published.</li>
+    <li>A tampered copy of a real notification is rejected with 401.</li>
+    <li>The tests were also run against issues reported on other subscription libraries, listed in <code>docs/prior-art</code>.</li>
+  </ul>
+  <div class="honest">
+    <p><b>What is not verified.</b> The five real Apple notifications come from a private app. The files are not in the repository, so nobody else can reproduce that run, and the test skips when they are absent. The Google side has never been run against live Play traffic. Its tests use fixtures taken from Google&rsquo;s documentation and public issues, with the Play API mocked.</p>
+  </div>
+</section>
+
+<section id="quickstart" aria-labelledby="h-qs">
+  <h2 id="h-qs">Quickstart</h2>
+  <p class="prose">Requires Go 1.26. Install with <code>go get github.com/tggo/go-entitlements</code>. These snippets are compiled as Examples in <code>quickstart_example_test.go</code>, and a test fails if the README drifts from them.</p>
+  <h3>Apple only, in-memory store</h3>
+<pre><code class="lang-go">ctx := context.Background()
+logger := slog.Default()
+
+svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
+
+verifier, err := apple.NewVerifier("com.example.app", // the bundle ID is required
+	apple.WithEnvironment(entitlements.EnvironmentProduction)) // reject Sandbox and TestFlight
+if err != nil {
+	log.Fatal(err)
+}
+mux := http.NewServeMux()
+mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(verifier), svc, httpx.WithLogger(logger)))
+go func() { log.Fatal(http.ListenAndServe(":8080", mux)) }()
+
+// Later, in your own handlers: does this user have access?
+ok, err := svc.IsActive(ctx, "7e3fb20b-4cdb-47cc-936d-99d65f608138", "com.example.pro.monthly")
+if err != nil {
+	log.Fatal(err)
+}
+log.Println("has access:", ok)</code></pre>
+  <h3>The same service on Postgres</h3>
+<pre><code class="lang-go">ctx := context.Background()
+logger := slog.Default()
+
+pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+if err != nil {
+	log.Fatal(err)
+}
+defer pool.Close()
+store := postgres.New(pool)
+if err := store.Migrate(ctx); err != nil { // idempotent, safe from several instances
+	log.Fatal(err)
+}
+svc := entitlements.NewService(store, entitlements.WithLogger(logger))
+
+list, err := svc.ListByUser(ctx, "7e3fb20b-4cdb-47cc-936d-99d65f608138")
+if err != nil {
+	log.Fatal(err)
+}
+for _, e := range list {
+	log.Println(e.ProductID, e.State, e.ExpiresAt)
+}</code></pre>
+  <h3>Google Play</h3>
+  <p class="prose">Create a Pub/Sub push subscription that sends an OIDC token. The audience is the endpoint URL and the service account is the one you pass to <code>pubsubauth.New</code>. The service account behind <code>androidpublisher.NewService</code> needs permission to view financial data for the app in the Play Console.</p>
+<pre><code class="lang-go">ctx := context.Background()
+logger := slog.Default()
+svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
+
+playAPI, err := play.NewService(ctx) // credentials from GOOGLE_APPLICATION_CREDENTIALS
+if err != nil {
+	log.Fatal(err)
+}
+parser, err := google.NewParser(androidpublisher.NewFetcher(playAPI), "com.example.app")
+if err != nil {
+	log.Fatal(err)
+}
+// The Pub/Sub push subscription must send an OIDC token for this audience
+// and service account; the handler refuses to start without a check.
+auth, err := pubsubauth.New("https://example.com/webhooks/google", "push@my-project.iam.gserviceaccount.com")
+if err != nil {
+	log.Fatal(err)
+}
+handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger), httpx.WithPushAuthenticator(auth))
+if err != nil {
+	log.Fatal(err)
+}
+http.Handle("/webhooks/google", handler)</code></pre>
+  <p class="prose">The service has <code>Process</code> (used by the handlers), <code>IsActive</code>, <code>Get</code> and <code>ListByUser</code>.</p>
+</section>
+
+<section id="limits" aria-labelledby="h-lim">
+  <h2 id="h-lim">What it does not do yet</h2>
+  <ul class="plain">
+    <li><b>Version 0.</b> The API may change between minor versions until v1.</li>
+    <li><b>Apple, refund order.</b> If a refund for an older transaction arrives before the renewal that replaced it, the chain is refunded and the later renewal is dropped as stale. Fixing this needs per-transaction tracking.</li>
+    <li><b>Google, acknowledgement.</b> The library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.</li>
+    <li><b>Google, add-ons.</b> One product is stored per purchase token: the line item with the latest expiry.</li>
+    <li><b>Out of scope.</b> Legacy <code>verifyReceipt</code>, Stripe and other web payment providers, consumables, and an App Store Server API client.</li>
+    <li><b>Missing user ID.</b> A notification with no account token is still applied, keyed by transaction, with an empty user. <code>ListByUser("")</code> returns nothing, so attribute these yourself.</li>
+  </ul>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>go-entitlements is MIT licensed. <a href="https://github.com/tggo/go-entitlements">Source and README</a>, <a href="https://github.com/tggo/go-entitlements/blob/main/DEFINITION_OF_DONE.md">Definition of Done</a>, <a href="https://github.com/tggo/go-entitlements/blob/main/SECURITY.md">security policy</a>.</p>
+    <p>The simulator on this page is a JavaScript port of the Go rules written for this explainer. If the two ever disagree, the Go code is right.</p>
+  </div>
+</footer>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  var b = document.getElementById('theme');
+  b.addEventListener('click', function () {
+    var r = document.documentElement, cur = r.getAttribute('data-theme');
+    if (!cur) cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    var n = cur === 'dark' ? 'light' : 'dark';
+    r.setAttribute('data-theme', n);
+    try { localStorage.setItem('theme', n); } catch (e) {}
+  });
+  /* tiny Go highlighter */
+  var KW = /\b(func|go|if|err|nil|return|defer|for|range|package|import|var|const|type)\b/g;
+  document.querySelectorAll('code.lang-go').forEach(function (c) {
+    var t = c.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    t = t.replace(/(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|\b(func|go|if|return|defer|for|range|nil|var)\b/g, function (m, cm, st, kw) {
+      return cm ? '<span class="cm">' + cm + '</span>' : st ? '<span class="st">' + st + '</span>' : '<span class="k">' + kw + '</span>';
+    });
+    c.innerHTML = t;
+  });
+})();
+</script>
+</body>
+</html>
