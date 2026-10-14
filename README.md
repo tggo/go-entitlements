@@ -116,6 +116,8 @@ The user is identified by `appAccountToken` on Apple and `obfuscatedExternalAcco
 
 Sandbox and TestFlight purchases on Apple and license-tester purchases on Google are free. `Event.Environment` says where a purchase was made (`Production`, `Sandbox`, `Xcode`, `LocalTesting`, `GoogleTest`; empty means production). By default `Service.Process` returns `ErrIgnored` for non-production events and `IsActive` skips non-production entitlements. Build the service with `entitlements.WithAllowSandbox()` in test or staging deployments. Pin the Apple verifier with `apple.WithEnvironment` as well.
 
+If production and TestFlight send notifications to the same URL, TestFlight testers' events are ignored by default. Point the App Store Connect Sandbox URL at a staging service built with `WithAllowSandbox()`, or enable it on the shared one if free tester access is acceptable.
+
 A runnable server with Postgres, both webhooks and `GET /entitlements?user_id=` is in `examples/server`. To try it locally without Apple:
 
 ```
