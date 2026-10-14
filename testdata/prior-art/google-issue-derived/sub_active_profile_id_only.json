@@ -1,0 +1,9 @@
+{
+  "kind": "androidpublisher#subscriptionPurchaseV2",
+  "startTime": "2025-10-24T11:03:42.097Z",
+  "regionCode": "DE",
+  "subscriptionState": "SUBSCRIPTION_STATE_ACTIVE",
+  "acknowledgementState": "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED",
+  "externalAccountIdentifiers": {"obfuscatedExternalProfileId": "profile-1234"},
+  "lineItems": [{"productId": "subscription.test", "expiryTime": "2030-01-01T00:00:00Z"}]
+}

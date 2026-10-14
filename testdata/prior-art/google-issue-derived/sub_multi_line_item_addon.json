@@ -1,0 +1,11 @@
+{
+  "kind": "androidpublisher#subscriptionPurchaseV2",
+  "startTime": "2025-10-01T10:00:00Z",
+  "subscriptionState": "SUBSCRIPTION_STATE_ACTIVE",
+  "acknowledgementState": "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED",
+  "externalAccountIdentifiers": {"obfuscatedExternalAccountId": "user-1"},
+  "lineItems": [
+    {"productId": "base.monthly", "expiryTime": "2030-01-01T00:00:00Z"},
+    {"productId": "addon.storage", "expiryTime": "2030-01-02T00:00:00Z"}
+  ]
+}

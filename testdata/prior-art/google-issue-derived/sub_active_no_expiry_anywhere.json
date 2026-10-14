@@ -1,0 +1,7 @@
+{
+  "kind": "androidpublisher#subscriptionPurchaseV2",
+  "subscriptionState": "SUBSCRIPTION_STATE_ACTIVE",
+  "acknowledgementState": "ACKNOWLEDGEMENT_STATE_PENDING",
+  "externalAccountIdentifiers": {"obfuscatedExternalAccountId": "user-1"},
+  "lineItems": [{"productId": "pro.yearly"}]
+}

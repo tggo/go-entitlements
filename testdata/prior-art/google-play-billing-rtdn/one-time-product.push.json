@@ -1,0 +1,7 @@
+{
+  "message": {
+    "data": "eyJ2ZXJzaW9uIjogIjEuMCIsICJwYWNrYWdlTmFtZSI6ICJjb20uc29tZS5hcHAiLCAiZXZlbnRUaW1lTWlsbGlzIjogIjE1MDMzNDk1NjYxNjgiLCAib25lVGltZVByb2R1Y3ROb3RpZmljYXRpb24iOiB7InZlcnNpb24iOiAiMS4wIiwgIm5vdGlmaWNhdGlvblR5cGUiOiAxLCAicHVyY2hhc2VUb2tlbiI6ICJQVVJDSEFTRV9UT0tFTiIsICJza3UiOiAibXkuc2t1In19",
+    "messageId": "136969346945"
+  },
+  "subscription": "projects/myproject/subscriptions/mysubscription"
+}

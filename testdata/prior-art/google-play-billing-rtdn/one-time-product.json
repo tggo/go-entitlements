@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "packageName": "com.some.app",
+  "eventTimeMillis": "1503349566168",
+  "oneTimeProductNotification": {
+    "version": "1.0",
+    "notificationType": 1,
+    "purchaseToken": "PURCHASE_TOKEN",
+    "sku": "my.sku"
+  }
+}

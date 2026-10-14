@@ -1,0 +1,7 @@
+{
+  "message": {
+    "data": "eyJ2ZXJzaW9uIjogIjEuMCIsICJwYWNrYWdlTmFtZSI6ICJjb20uc29tZS5hcHAiLCAiZXZlbnRUaW1lTWlsbGlzIjogIjE1MDMzNDk1NjYxNjgiLCAidGVzdE5vdGlmaWNhdGlvbiI6IHsidmVyc2lvbiI6ICIxLjAifX0=",
+    "messageId": "136969346945"
+  },
+  "subscription": "projects/myproject/subscriptions/mysubscription"
+}

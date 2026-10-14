@@ -1,0 +1,17 @@
+{
+  "kind": "androidpublisher#subscriptionPurchaseV2",
+  "startTime": "2025-10-24T11:03:42.097Z",
+  "regionCode": "DE",
+  "subscriptionState": "SUBSCRIPTION_STATE_ACTIVE",
+  "latestOrderId": "GPA.xxxx-xxxx-xxxx-xxxx",
+  "testPurchase": {},
+  "acknowledgementState": "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED",
+  "externalAccountIdentifiers": {"obfuscatedExternalAccountId": "VioUT4kHwh0ur8crMexs"},
+  "lineItems": [{
+    "productId": "subscription.test",
+    "expiryTime": "2025-10-24T11:06:41.541Z",
+    "autoRenewingPlan": {"autoRenewEnabled": true, "recurringPrice": {"currencyCode": "EUR", "units": "4", "nanos": 190000000}},
+    "offerDetails": {"basePlanId": "test-one-month", "offerId": "test-one-month-trial"},
+    "latestSuccessfulOrderId": "GPA.xxxx-xxxx-xxxx-xxxx"
+  }]
+}

@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "packageName": "com.some.app",
+  "eventTimeMillis": "1503349566168",
+  "subscriptionNotification": {
+    "version": "1.0",
+    "notificationType": 4,
+    "purchaseToken": "PURCHASE_TOKEN"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "packageName": "com.some.app",
+  "eventTimeMillis": "1503349566168",
+  "voidedPurchaseNotification": {
+    "purchaseToken": "PURCHASE_TOKEN",
+    "orderId": "GS.0000-0000-0000",
+    "productType": 2,
+    "refundType": 1
+  }
+}

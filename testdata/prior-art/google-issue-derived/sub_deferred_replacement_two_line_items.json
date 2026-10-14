@@ -1,0 +1,13 @@
+{
+  "kind": "androidpublisher#subscriptionPurchaseV2",
+  "startTime": "2025-10-01T10:00:00Z",
+  "regionCode": "DE",
+  "subscriptionState": "SUBSCRIPTION_STATE_ACTIVE",
+  "acknowledgementState": "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED",
+  "externalAccountIdentifiers": {"obfuscatedExternalAccountId": "user-1"},
+  "lineItems": [
+    {"productId": "pro.monthly", "expiryTime": "2025-11-01T10:00:00Z",
+     "deferredItemReplacement": {"productId": "pro.yearly"}},
+    {"productId": "pro.yearly"}
+  ]
+}
