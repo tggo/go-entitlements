@@ -2,9 +2,10 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"errors"
-	"sort"
+	"slices"
 	"sync"
 
 	"github.com/tggo/go-entitlements"
@@ -111,11 +112,8 @@ func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.E
 			out = append(out, e)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Source != out[j].Source {
-			return out[i].Source < out[j].Source
-		}
-		return out[i].OriginalTxID < out[j].OriginalTxID
+	slices.SortFunc(out, func(a, b entitlements.Entitlement) int {
+		return cmp.Or(cmp.Compare(a.Source, b.Source), cmp.Compare(a.OriginalTxID, b.OriginalTxID))
 	})
 	return out, nil
 }

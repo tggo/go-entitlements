@@ -27,6 +27,12 @@ type AppleCAOptions struct {
 	OmitLeafOID         bool
 	OmitIntermediateOID bool
 	ExpiredLeaf         bool
+	// ExtraIntermediate puts one more CA between the root and the Apple-style
+	// intermediate, so x5c has four certificates: leaf, intermediate, upper, root.
+	ExtraIntermediate bool
+	// LeafP384 gives the leaf certificate a P-384 key. Sign cannot use it (it
+	// produces ES256 signatures); sign with SignWithKey and another key.
+	LeafP384 bool
 }
 
 // AppleCA is a throwaway root -> intermediate -> leaf chain shaped like
@@ -35,6 +41,7 @@ type AppleCA struct {
 	Root         *x509.Certificate
 	Intermediate *x509.Certificate
 	Leaf         *x509.Certificate
+	Upper        *x509.Certificate // CA between root and Intermediate, nil unless ExtraIntermediate
 	LeafKey      *ecdsa.PrivateKey
 	Pool         *x509.CertPool // contains Root only
 }
@@ -76,6 +83,12 @@ func NewAppleCA(tb testing.TB, opts ...AppleCAOptions) *AppleCA {
 	nullExt := []byte{0x05, 0x00}
 
 	rootKey, interKey, leafKey := newKey(tb), newKey(tb), newKey(tb)
+	if o.LeafP384 {
+		var err error
+		if leafKey, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader); err != nil {
+			tb.Fatal(err)
+		}
+	}
 	rootTmpl := &x509.Certificate{
 		SerialNumber: serial(), Subject: pkix.Name{CommonName: "Test Apple Root CA"},
 		NotBefore: now.Add(-72 * time.Hour), NotAfter: now.Add(24 * time.Hour * 365),
@@ -92,7 +105,19 @@ func NewAppleCA(tb testing.TB, opts ...AppleCAOptions) *AppleCA {
 	if !o.OmitIntermediateOID {
 		interTmpl.ExtraExtensions = []pkix.Extension{{Id: oidAppleIntermediate, Value: nullExt}}
 	}
-	inter := sign(tb, interTmpl, root, &interKey.PublicKey, rootKey)
+	var upper *x509.Certificate
+	issuer, issuerKey := root, rootKey
+	if o.ExtraIntermediate {
+		upperKey := newKey(tb)
+		upperTmpl := &x509.Certificate{
+			SerialNumber: serial(), Subject: pkix.Name{CommonName: "Test Extra Intermediate"},
+			NotBefore: now.Add(-72 * time.Hour), NotAfter: now.Add(24 * time.Hour * 365),
+			IsCA: true, BasicConstraintsValid: true, MaxPathLen: 1, KeyUsage: x509.KeyUsageCertSign,
+		}
+		upper = sign(tb, upperTmpl, root, &upperKey.PublicKey, rootKey)
+		issuer, issuerKey = upper, upperKey
+	}
+	inter := sign(tb, interTmpl, issuer, &interKey.PublicKey, issuerKey)
 
 	leafTmpl := &x509.Certificate{
 		SerialNumber: serial(), Subject: pkix.Name{CommonName: "Test Prod ECC Mac App Store Receipt Signing"},
@@ -109,7 +134,7 @@ func NewAppleCA(tb testing.TB, opts ...AppleCAOptions) *AppleCA {
 
 	pool := x509.NewCertPool()
 	pool.AddCert(root)
-	return &AppleCA{Root: root, Intermediate: inter, Leaf: leaf, LeafKey: leafKey, Pool: pool}
+	return &AppleCA{Root: root, Intermediate: inter, Upper: upper, Leaf: leaf, LeafKey: leafKey, Pool: pool}
 }
 
 // RootPEM returns the root certificate in PEM form.
@@ -128,7 +153,17 @@ func (ca *AppleCA) Sign(tb testing.TB, claims any) string {
 // (to simulate a forged signature).
 func (ca *AppleCA) SignWithKey(tb testing.TB, key *ecdsa.PrivateKey, claims any) string {
 	tb.Helper()
-	return SignChain(tb, key, [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw, ca.Root.Raw}, claims)
+	return SignChain(tb, key, ca.Chain(), claims)
+}
+
+// Chain returns the x5c certificates in header order: leaf, intermediate,
+// the extra intermediate if any, root.
+func (ca *AppleCA) Chain() [][]byte {
+	chain := [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw}
+	if ca.Upper != nil {
+		chain = append(chain, ca.Upper.Raw)
+	}
+	return append(chain, ca.Root.Raw)
 }
 
 // SignChain produces an ES256 JWS signed with key and the given DER
@@ -149,6 +184,13 @@ func signRaw(tb testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, payload []byte)
 		certs[i] = base64.StdEncoding.EncodeToString(der)
 	}
 	return signRawHeader(tb, key, map[string]any{"alg": "ES256", "x5c": certs}, payload)
+}
+
+// SignRawHeader signs payload with key under an arbitrary JWS header, for
+// tests that tamper with header fields such as alg.
+func SignRawHeader(tb testing.TB, key *ecdsa.PrivateKey, hdr map[string]any, payload []byte) string {
+	tb.Helper()
+	return signRawHeader(tb, key, hdr, payload)
 }
 
 func signRawHeader(tb testing.TB, key *ecdsa.PrivateKey, hdr map[string]any, cb []byte) string {
@@ -179,5 +221,5 @@ func NewAppleKey(tb testing.TB) *ecdsa.PrivateKey {
 // not. For fuzzing and malformed-payload tests.
 func (ca *AppleCA) SignRaw(tb testing.TB, payload []byte) string {
 	tb.Helper()
-	return signRaw(tb, ca.LeafKey, [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw, ca.Root.Raw}, payload)
+	return signRaw(tb, ca.LeafKey, ca.Chain(), payload)
 }

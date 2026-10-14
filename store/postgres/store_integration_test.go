@@ -238,18 +238,80 @@ func (s *StoreSuite) TestApplyUnderSerializableDefault() {
 }
 
 func (s *StoreSuite) TestPrune() {
-	old := s.ev("e-old", entitlements.StateActive, s.now.Add(-48*time.Hour))
-	old.OriginalTxID = "txOld"
-	_, err := s.process(old)
-	s.Require().NoError(err)
-	_, err = s.process(s.ev("e-new", entitlements.StateActive, s.now))
-	s.Require().NoError(err)
+	ctx := context.Background()
+	cutoff := s.now.Add(-24 * time.Hour)
+	for i, at := range []time.Time{cutoff.Add(-time.Hour), cutoff, cutoff.Add(time.Hour)} {
+		e := s.ev(fmt.Sprintf("e%d", i), entitlements.StateActive, at)
+		e.OriginalTxID = fmt.Sprintf("tx%d", i)
+		_, err := s.process(e)
+		s.Require().NoError(err)
+	}
 
-	n, err := s.store.Prune(context.Background(), s.now.Add(-24*time.Hour))
+	n, err := s.store.Prune(ctx, cutoff)
 	s.Require().NoError(err)
 	s.Equal(int64(1), n)
-	s.Equal(1, s.count("processed_events"))
-	s.NotNil(s.get("txOld"), "entitlements are kept")
+	rows, err := s.db.Query(ctx, `SELECT event_id FROM processed_events ORDER BY event_id`)
+	s.Require().NoError(err)
+	defer rows.Close()
+	var left []string
+	for rows.Next() {
+		var id string
+		s.Require().NoError(rows.Scan(&id))
+		left = append(left, id)
+	}
+	s.Equal([]string{"e1", "e2"}, left, "the older row goes; the row exactly at the cutoff and the newer one stay")
+	for i := range 3 {
+		s.NotNil(s.get(fmt.Sprintf("tx%d", i)), "entitlements are kept")
+	}
+}
+
+func (s *StoreSuite) TestProcessedEventOutcomes() {
+	ctx := context.Background()
+	_, err := s.process(s.ev("ok", entitlements.StateActive, s.now.Add(time.Hour)))
+	s.Require().NoError(err)
+	_, err = s.process(s.ev("late", entitlements.StateExpired, s.now))
+	s.Require().ErrorIs(err, entitlements.ErrStale)
+	_, err = s.store.Apply(ctx, s.ev("noop", entitlements.StateActive, s.now), func(*entitlements.Entitlement) (*entitlements.Entitlement, error) { return nil, nil })
+	s.Require().NoError(err)
+
+	type row struct {
+		applied bool
+		reason  string
+	}
+	got := map[string]row{}
+	rows, err := s.db.Query(ctx, `SELECT event_id, applied, reason FROM processed_events`)
+	s.Require().NoError(err)
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var r row
+		s.Require().NoError(rows.Scan(&id, &r.applied, &r.reason))
+		got[id] = r
+	}
+	s.Equal(true, got["ok"].applied)
+	s.Empty(got["ok"].reason)
+	s.False(got["late"].applied)
+	s.Contains(got["late"].reason, "stale")
+	s.False(got["noop"].applied)
+	s.Equal("noop", got["noop"].reason)
+}
+
+func (s *StoreSuite) TestTimestampsComeBackInUTC() {
+	cfg, perr := pgxpool.ParseConfig(s.dsn)
+	s.Require().NoError(perr)
+	cfg.ConnConfig.RuntimeParams["timezone"] = "Asia/Tokyo"
+	pool, perr := pgxpool.NewWithConfig(context.Background(), cfg)
+	s.Require().NoError(perr)
+	defer pool.Close()
+	st := postgres.New(pool)
+	e := s.ev("tz", entitlements.StateActive, s.now)
+	_, err := entitlements.NewService(st).Process(context.Background(), e)
+	s.Require().NoError(err)
+	got, err := st.Get(context.Background(), entitlements.SourceApple, "tx1")
+	s.Require().NoError(err)
+	s.Equal(time.UTC, got.UpdatedAt.Location())
+	s.Equal(time.UTC, got.ExpiresAt.Location())
+	s.True(got.UpdatedAt.Equal(s.now))
 }
 
 // The shared Store contract; each subtest starts from empty tables.

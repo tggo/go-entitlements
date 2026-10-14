@@ -16,6 +16,10 @@ import (
 	"github.com/tggo/go-entitlements/google"
 )
 
+// ErrBadResponse means the Play API answered 200 with a body this package
+// cannot interpret (for example an unparsable expiryTime).
+var ErrBadResponse = errors.New("androidpublisher: unusable response")
+
 // Fetcher implements google.SubscriptionsFetcher. It is safe for concurrent
 // use. Timeouts and the HTTP client come from the play.Service you pass in
 // (and from google.WithFetchTimeout on the parser).
@@ -78,7 +82,7 @@ func convertV2(resp *play.SubscriptionPurchaseV2) (*google.SubscriptionPurchaseV
 		if li.ExpiryTime != "" {
 			t, err := time.Parse(time.RFC3339Nano, li.ExpiryTime)
 			if err != nil {
-				return nil, fmt.Errorf("androidpublisher: bad expiryTime %q: %w", li.ExpiryTime, err)
+				return nil, fmt.Errorf("%w: bad expiryTime %q: %w", ErrBadResponse, li.ExpiryTime, err)
 			}
 			item.ExpiryTime = t.UTC()
 		}

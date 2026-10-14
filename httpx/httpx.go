@@ -28,6 +28,15 @@ import (
 	"github.com/tggo/go-entitlements"
 )
 
+var (
+	// ErrAuthRequired is returned by NewGoogleHandler when neither a push
+	// authenticator nor WithInsecureNoAuth is given.
+	ErrAuthRequired = errors.New("httpx: push authentication is required (use WithPushAuthenticator, or WithInsecureNoAuth to opt out explicitly)")
+	// ErrDependencyRequired is returned by a handler constructor for a nil
+	// parser or processor.
+	ErrDependencyRequired = errors.New("httpx: parser and processor are required")
+)
+
 // DefaultMaxBodyBytes is the request body limit when WithMaxBodyBytes is not set.
 const DefaultMaxBodyBytes = 1 << 20
 

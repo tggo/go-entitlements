@@ -38,13 +38,13 @@ type googleHandler struct {
 // timeouts) answers 500 so Pub/Sub redelivers.
 func NewGoogleHandler(parser GoogleParser, svc Processor, opts ...Option) (http.Handler, error) {
 	if parser == nil || svc == nil {
-		return nil, errors.New("httpx: NewGoogleHandler: parser and processor are required")
+		return nil, ErrDependencyRequired
 	}
 	cfg := newConfig(opts)
 	log := cfg.log.With("handler", "google")
 	if cfg.auth == nil {
 		if !cfg.insecure {
-			return nil, errors.New("httpx: NewGoogleHandler: push authentication is required (use WithPushAuthenticator, or WithInsecureNoAuth to opt out explicitly)")
+			return nil, ErrAuthRequired
 		}
 		log.Error("push authentication disabled", "risk", "anyone who can reach this endpoint can submit forged notifications")
 	}

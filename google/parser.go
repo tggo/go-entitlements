@@ -14,6 +14,13 @@ import (
 )
 
 var (
+	// ErrFetcherRequired is returned by NewParser for a nil fetcher.
+	ErrFetcherRequired = errors.New("google: NewParser: fetcher is required")
+	// ErrPackageRequired is returned by NewParser for an empty package name.
+	ErrPackageRequired = errors.New("google: NewParser: package name is required")
+	// ErrNoSubscription means the fetcher returned neither a subscription nor
+	// an error. It is a fetcher bug; the push is answered 500.
+	ErrNoSubscription = errors.New("google: fetcher returned no subscription")
 	// ErrMalformed means the push body or its payload could not be decoded.
 	ErrMalformed = errors.New("google: malformed notification")
 	// ErrPackageMismatch means the notification is for another application.
@@ -114,10 +121,10 @@ func WithFetchTimeout(d time.Duration) Option {
 // other apps. Nil options are ignored.
 func NewParser(fetcher SubscriptionsFetcher, packageName string, opts ...Option) (*Parser, error) {
 	if fetcher == nil {
-		return nil, errors.New("google: NewParser: fetcher is nil")
+		return nil, ErrFetcherRequired
 	}
 	if packageName == "" {
-		return nil, errors.New("google: NewParser: package name is required")
+		return nil, ErrPackageRequired
 	}
 	p := &Parser{
 		fetcher: fetcher, packageName: packageName,
@@ -250,7 +257,7 @@ func (p *Parser) fetch(ctx context.Context, packageName, token string) (*Subscri
 		return nil, RedactToken(classifyFetchError(err), token)
 	}
 	if sub == nil {
-		return nil, errors.New("google: fetcher returned no subscription")
+		return nil, ErrNoSubscription
 	}
 	return sub, nil
 }

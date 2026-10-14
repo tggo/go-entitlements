@@ -42,6 +42,7 @@ func Run(t *testing.T, newStore func(t *testing.T) entitlements.Store) {
 		{"EnvironmentRoundTrip", environmentRoundTrip},
 		{"FnSeesNilThenCurrent", fnSeesNilThenCurrent},
 		{"ApplyReturnsSavedEntitlement", applyReturnsSaved},
+		{"RenewalPersistsEveryChangedField", renewalPersists},
 		{"DuplicateEventIsRejectedWithoutCallingFn", duplicateRejected},
 		{"DedupeIsPerSource", dedupePerSource},
 		{"StaleIgnoredUnsupportedAreRecordedNotApplied", recordedNotApplied},
@@ -178,9 +179,52 @@ func fnSeesNilThenCurrent(t *testing.T, st entitlements.Store) {
 }
 
 func applyReturnsSaved(t *testing.T, st entitlements.Store) {
-	got := mustApply(t, st, event("e1", entitlements.StateActive, t0))
+	e := event("e1", entitlements.StateActive, t0)
+	e.Environment = entitlements.EnvironmentSandbox
+	got := mustApply(t, st, e)
 	if got.Source != entitlements.SourceApple || got.OriginalTxID != "tx1" || got.State != entitlements.StateActive {
 		t.Errorf("returned entitlement = %+v", got)
+	}
+	// what the store persisted must equal what Apply returned
+	stored := mustGet(t, st, entitlements.SourceApple, "tx1")
+	if !sameEntitlement(*got, *stored) {
+		t.Errorf("Apply returned %+v but the store holds %+v", *got, *stored)
+	}
+	if stored.UpdatedAt.Location() != time.UTC {
+		t.Errorf("UpdatedAt location = %v, want UTC", stored.UpdatedAt.Location())
+	}
+}
+
+func sameEntitlement(a, b entitlements.Entitlement) bool {
+	return a.UserID == b.UserID && a.ProductID == b.ProductID && a.OriginalTxID == b.OriginalTxID &&
+		a.Source == b.Source && a.State == b.State && a.ExpiresAt.Equal(b.ExpiresAt) &&
+		a.UpdatedAt.Equal(b.UpdatedAt) && a.Version == b.Version && a.Environment == b.Environment
+}
+
+// renewalPersists applies a second event that changes every mutable column
+// and reads the row back: the UPDATE path must store all of them.
+func renewalPersists(t *testing.T, st entitlements.Store) {
+	first := event("e1", entitlements.StateActive, t0)
+	first.UserID, first.ProductID, first.Environment = "", "pro-monthly", entitlements.EnvironmentSandbox
+	first.ExpiresAt = t0.Add(24 * time.Hour)
+	mustApply(t, st, first)
+
+	renewal := event("e2", entitlements.StateGrace, t0.Add(time.Hour))
+	renewal.UserID, renewal.ProductID, renewal.Environment = "u7", "pro-yearly", entitlements.EnvironmentProduction
+	renewal.ExpiresAt = t0.Add(400 * 24 * time.Hour)
+	mustApply(t, st, renewal)
+
+	got := mustGet(t, st, entitlements.SourceApple, "tx1")
+	want := entitlements.Entitlement{
+		UserID: "u7", ProductID: "pro-yearly", OriginalTxID: "tx1", Source: entitlements.SourceApple,
+		State: entitlements.StateGrace, ExpiresAt: t0.Add(400 * 24 * time.Hour), UpdatedAt: t0.Add(time.Hour),
+		Version: 2, Environment: entitlements.EnvironmentProduction,
+	}
+	if !sameEntitlement(*got, want) {
+		t.Errorf("stored after renewal = %+v, want %+v", *got, want)
+	}
+	if list, err := st.ListByUser(context.Background(), "u7"); err != nil || len(list) != 1 {
+		t.Errorf("ListByUser(u7) = %d rows, %v; the new user id must be persisted", len(list), err)
 	}
 }
 

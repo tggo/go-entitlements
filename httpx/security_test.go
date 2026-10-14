@@ -23,7 +23,7 @@ func TestNewGoogleHandler_RequiresAuthOrExplicitOptOut(t *testing.T) {
 	parser, svc := mocks.NewMockGoogleParser(t), mocks.NewMockProcessor(t)
 
 	h, err := httpx.NewGoogleHandler(parser, svc)
-	require.Error(t, err)
+	require.ErrorIs(t, err, httpx.ErrAuthRequired)
 	assert.Nil(t, h)
 
 	h, err = httpx.NewGoogleHandler(parser, svc, httpx.WithPushAuthenticator(func(*http.Request) error { return nil }))
@@ -50,9 +50,9 @@ func TestNewGoogleHandler_InsecureOptOutLogsAnError(t *testing.T) {
 func TestNewGoogleHandler_NilParserOrProcessor(t *testing.T) {
 	t.Parallel()
 	_, err := httpx.NewGoogleHandler(nil, mocks.NewMockProcessor(t), httpx.WithInsecureNoAuth())
-	require.Error(t, err)
+	require.ErrorIs(t, err, httpx.ErrDependencyRequired)
 	_, err = httpx.NewGoogleHandler(mocks.NewMockGoogleParser(t), nil, httpx.WithInsecureNoAuth())
-	require.Error(t, err)
+	require.ErrorIs(t, err, httpx.ErrDependencyRequired)
 }
 
 // Security M1: a token Play calls invalid will never become valid.

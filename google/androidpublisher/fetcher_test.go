@@ -60,7 +60,7 @@ func TestAndroidPublisherFetcher_APIError(t *testing.T) {
 
 	_, err := f.GetV2(context.Background(), "p", "t")
 
-	assert.Error(t, err)
+	require.ErrorIs(t, err, google.ErrPurchaseNotFound)
 }
 
 func TestAndroidPublisherFetcher_BadExpiry(t *testing.T) {
@@ -71,5 +71,6 @@ func TestAndroidPublisherFetcher_BadExpiry(t *testing.T) {
 
 	_, err := f.GetV2(context.Background(), "p", "t")
 
-	assert.Error(t, err)
+	require.ErrorIs(t, err, androidpublisher.ErrBadResponse)
+	assert.NotErrorIs(t, err, google.ErrFetchTransient, "a bad body is not a transport failure")
 }

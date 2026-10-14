@@ -98,7 +98,9 @@ func TestPriorArt_WrongMarkerOID(t *testing.T) {
 	require.NoError(t, err)
 	pool := x509.NewCertPool()
 	pool.AddCert(ca)
-	v, err := apple.NewVerifier("", apple.WithInsecureAnyBundle(), apple.WithRootPool(pool))
+	// Apple's test certificates are valid 2023-01 to 2033-01: pin the clock inside that window.
+	v, err := apple.NewVerifier("", apple.WithInsecureAnyBundle(), apple.WithRootPool(pool),
+		apple.WithTimeFn(func() time.Time { return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 
 	tests := []struct {

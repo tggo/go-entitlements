@@ -102,13 +102,18 @@ func TestAppleChain_Real_UserlessAllOrders(t *testing.T) {
 	if len(files) == 0 {
 		t.Skip("no real fixtures")
 	}
-	vf, err := apple.NewVerifier("menu.fridge.recipebox")
+	bodies := make([][]byte, len(files))
+	for i, f := range files {
+		var err error
+		bodies[i], err = os.ReadFile(f)
+		require.NoError(t, err)
+	}
+	signed := testutil.LatestSignedDate(t, bodies...) // see TestRealFixtures: the clock is pinned to the capture
+	vf, err := apple.NewVerifier("menu.fridge.recipebox", apple.WithTimeFn(func() time.Time { return signed }))
 	require.NoError(t, err)
 	parser := apple.NewParser(vf)
 	byType := map[string][]byte{}
-	for _, f := range files {
-		b, err := os.ReadFile(f)
-		require.NoError(t, err)
+	for _, b := range bodies {
 		n, err := vf.VerifyNotification(b)
 		require.NoError(t, err)
 		byType[n.Payload.NotificationType] = b

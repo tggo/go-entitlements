@@ -52,7 +52,7 @@ func TestNewPubSubAuthenticator_RealValidatorRejectsGarbage(t *testing.T) {
 	r.Header.Set("Authorization", "Bearer not-a-jwt")
 	auth, err := New("aud", "e@x.com")
 	require.NoError(t, err)
-	assert.Error(t, auth(r))
+	require.ErrorContains(t, auth(r), "validate id token")
 }
 
 func TestNew_RequiresAudienceAndEmail(t *testing.T) {
@@ -65,7 +65,7 @@ func TestNew_RequiresAudienceAndEmail(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			auth, err := New(args[0], args[1])
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrMissingConfig)
 			assert.Nil(t, auth)
 		})
 	}

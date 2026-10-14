@@ -40,7 +40,7 @@ func TestService_Process_AppliesFn(t *testing.T) {
 func TestService_Process_Validation(t *testing.T) {
 	st := mocks.NewMockStore(t)
 	_, err := newSvc(t, st).Process(context.Background(), entitlements.Event{ID: "x"})
-	require.Error(t, err)
+	require.ErrorIs(t, err, entitlements.ErrInvalidEvent)
 }
 
 func TestService_Process_PassesThroughSentinels(t *testing.T) {

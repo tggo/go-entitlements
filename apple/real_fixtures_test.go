@@ -11,6 +11,7 @@ import (
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/apple"
+	"github.com/tggo/go-entitlements/internal/testutil"
 )
 
 // RealAppleDir holds real Apple-signed notifications (gitignored). Tests that
@@ -39,13 +40,21 @@ func TestRealFixtures(t *testing.T) {
 		"DID_CHANGE_RENEWAL_STATUS/AUTO_RENEW_DISABLED": {state: entitlements.StateActive, expires: 1790767344000, occurred: 1790681572251},
 		"EXPIRED/VOLUNTARY":                             {state: entitlements.StateExpired, expires: 1790767344000, occurred: 1790767347942},
 	}
-	vf, err := apple.NewVerifier(realBundle)
+	bodies := make([][]byte, len(files))
+	for i, f := range files {
+		var err error
+		bodies[i], err = os.ReadFile(f)
+		require.NoError(t, err)
+	}
+	// Pin the clock to when the notifications were signed: the leaf certificates
+	// are short-lived and would otherwise fail this test once they expire.
+	signed := testutil.LatestSignedDate(t, bodies...)
+	vf, err := apple.NewVerifier(realBundle, apple.WithTimeFn(func() time.Time { return signed }))
 	require.NoError(t, err)
 	p := apple.NewParser(vf)
 	seen := 0
-	for _, f := range files {
-		body, err := os.ReadFile(f)
-		require.NoError(t, err)
+	for i, f := range files {
+		body := bodies[i]
 		n, err := vf.VerifyNotification(body)
 		require.NoError(t, err, filepath.Base(f))
 		key := n.Payload.NotificationType

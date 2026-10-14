@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration stress fuzz lint generate-mocks cover run-example
+.PHONY: test test-unit test-integration stress fuzz mutate lint generate-mocks cover run-example
 
 test: test-unit test-integration
 
@@ -21,6 +21,16 @@ fuzz:
 	go test -run '^$$' -fuzz '^FuzzApply$$' -fuzztime $(FUZZTIME) .
 	go test -run '^$$' -fuzz '^FuzzAppleParse$$' -fuzztime $(FUZZTIME) ./apple
 	go test -run '^$$' -fuzz '^FuzzGoogleParse$$' -fuzztime $(FUZZTIME) ./google
+
+# Mutation testing of the unit-testable packages with gremlins (pinned). It
+# mutates the code, reruns the unit tests per mutant and reports survivors.
+# store/postgres needs the integration tag and Docker, so gremlins does not
+# cover it; mutate it by hand. Takes a few minutes; not run in CI.
+GREMLINS_VERSION ?= v0.6.0
+mutate:
+	go run github.com/go-gremlins/gremlins/cmd/gremlins@$(GREMLINS_VERSION) unleash \
+		-E 'internal/|examples/|storetest/' --invert-logical --invert-assignments --invert-loopctrl \
+		--timeout-coefficient 30 -S lkvt .
 
 lint:
 	golangci-lint run ./...

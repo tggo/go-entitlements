@@ -13,6 +13,10 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
+// ErrMissingConfig is returned by New when audience or service account email
+// is empty.
+var ErrMissingConfig = errors.New("pubsubauth: audience and service account email are both required")
+
 // New returns a push authenticator for httpx.WithPushAuthenticator. It
 // verifies the token Pub/Sub sends as Authorization: Bearer <JWT> when the
 // subscription has authentication enabled: issued by Google for audience, with
@@ -22,7 +26,7 @@ import (
 // Google-signed token.
 func New(audience, serviceAccountEmail string) (func(*http.Request) error, error) {
 	if audience == "" || serviceAccountEmail == "" {
-		return nil, errors.New("pubsubauth: audience and service account email are both required")
+		return nil, ErrMissingConfig
 	}
 	return newAuthenticator(audience, serviceAccountEmail, idtoken.Validate), nil
 }

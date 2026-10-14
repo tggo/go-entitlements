@@ -187,7 +187,7 @@ func TestParser_FetcherReturnsNil(t *testing.T) {
 
 	_, err := newParser(t, f).Parse(context.Background(), body)
 
-	assert.Error(t, err)
+	require.ErrorIs(t, err, google.ErrNoSubscription)
 }
 
 func TestParser_Malformed(t *testing.T) {
@@ -219,5 +219,5 @@ func TestMillis(t *testing.T) {
 	assert.True(t, d.EventTimeMillis.Time().IsZero())
 	require.NoError(t, jsonUnmarshal([]byte(`{"eventTimeMillis":""}`), &d))
 	assert.True(t, d.EventTimeMillis.Time().IsZero())
-	assert.Error(t, jsonUnmarshal([]byte(`{"eventTimeMillis":"1.5x"}`), &d))
+	require.ErrorContains(t, jsonUnmarshal([]byte(`{"eventTimeMillis":"1.5x"}`), &d), `invalid millis "1.5x"`)
 }

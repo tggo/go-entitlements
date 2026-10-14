@@ -151,7 +151,7 @@ func TestControlCharsInIDsAreMalformed(t *testing.T) {
 func TestNewParser_PackageNameRequired(t *testing.T) {
 	t.Parallel()
 	p, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t), "")
-	require.Error(t, err)
+	require.ErrorIs(t, err, google.ErrPackageRequired)
 	assert.Nil(t, p)
 }
 

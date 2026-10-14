@@ -39,7 +39,7 @@ func subBody(tb testing.TB) []byte {
 func TestNewParser_NilFetcher(t *testing.T) {
 	t.Parallel()
 	p, err := google.NewParser(nil, pkg)
-	require.Error(t, err)
+	require.ErrorIs(t, err, google.ErrFetcherRequired)
 	assert.Nil(t, p)
 }
 

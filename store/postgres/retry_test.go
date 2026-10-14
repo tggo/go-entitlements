@@ -65,3 +65,15 @@ func TestWithRetry_ContextCancelStopsBackoff(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 1, calls)
 }
+
+func TestBackoff_DoublesPerAttemptWithUpToOneBaseOfJitter(t *testing.T) {
+	t.Parallel()
+	for attempt := range maxAttempts {
+		base := retryBaseWait << attempt
+		for range 50 {
+			d := backoff(attempt)
+			assert.GreaterOrEqual(t, d, base, "attempt %d", attempt)
+			assert.Less(t, d, 2*base, "attempt %d", attempt)
+		}
+	}
+}

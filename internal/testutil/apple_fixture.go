@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -84,4 +85,38 @@ func (f AppleFixture) ShiftTimes(d time.Duration) {
 			}
 		}
 	}
+}
+
+// LatestSignedDate returns the newest outer signedDate among signed
+// notification bodies, read without verifying them. Real-notification tests
+// pin the verifier clock to it, because Apple's leaf certificates are
+// short-lived and the files would otherwise start failing on the day the
+// capture-time leaf certificate expires.
+func LatestSignedDate(tb testing.TB, bodies ...[]byte) time.Time {
+	tb.Helper()
+	var latest int64
+	for _, b := range bodies {
+		var rb struct {
+			SignedPayload string `json:"signedPayload"`
+		}
+		if err := json.Unmarshal(b, &rb); err != nil {
+			tb.Fatal(err)
+		}
+		parts := strings.Split(rb.SignedPayload, ".")
+		if len(parts) != 3 {
+			tb.Fatalf("not a JWS: %d segments", len(parts))
+		}
+		raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+		if err != nil {
+			tb.Fatal(err)
+		}
+		var p struct {
+			SignedDate int64 `json:"signedDate"`
+		}
+		if err := json.Unmarshal(raw, &p); err != nil {
+			tb.Fatal(err)
+		}
+		latest = max(latest, p.SignedDate)
+	}
+	return time.UnixMilli(latest).UTC()
 }

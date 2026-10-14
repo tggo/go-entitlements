@@ -170,14 +170,19 @@ func retryable(err error) bool {
 	return errors.As(err, &pgErr) && (pgErr.Code == "40001" || pgErr.Code == "40P01")
 }
 
+// backoff is retryBaseWait doubled per attempt, plus up to 100% jitter.
+func backoff(attempt int) time.Duration {
+	base := retryBaseWait << attempt
+	return base + time.Duration(rand.Int64N(int64(base))) //nolint:gosec // jitter, not security
+}
+
 func withRetry(ctx context.Context, op func() error) error {
 	var err error
 	for attempt := range maxAttempts {
 		if err = op(); err == nil || !retryable(err) {
 			return err
 		}
-		wait := retryBaseWait << attempt
-		wait += time.Duration(rand.Int64N(int64(wait))) //nolint:gosec // jitter, not security
+		wait := backoff(attempt)
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("postgres: retry aborted: %w", errors.Join(ctx.Err(), err))
@@ -213,12 +218,9 @@ ON CONFLICT (source, event_id) DO NOTHING`,
 	cur, err := scan(tx.QueryRow(ctx,
 		`SELECT `+selectCols+` FROM entitlements WHERE source = $1 AND original_tx_id = $2 FOR UPDATE`,
 		string(ev.Source), ev.OriginalTxID))
-	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("postgres: load entitlement: %w", err)
-		}
-		cur = nil
-	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("postgres: load entitlement: %w", err)
+	} // no row: cur is nil, a new chain
 
 	next, fnErr := fn(cur)
 	if fnErr != nil {
