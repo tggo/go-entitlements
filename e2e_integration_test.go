@@ -128,7 +128,7 @@ func (s *E2ESuite) TearDownTest() {
 // --- helpers -----------------------------------------------------------
 
 func (s *E2ESuite) post(path string, body []byte) int {
-	resp, err := http.Post(s.srv.URL+path, "application/json", bytes.NewReader(body)) //nolint:noctx // test
+	resp, err := http.Post(s.srv.URL+path, "application/json", bytes.NewReader(body))
 	s.Require().NoError(err)
 	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode
@@ -235,7 +235,7 @@ func (s *E2ESuite) TestApple_RejectsForgedAndMalformed() {
 	s.Equal(400, s.post("/webhooks/apple", []byte(`not json`)))
 	s.Equal(401, s.post("/webhooks/apple", []byte(`{"signedPayload":"a.b.c"}`)))
 
-	resp, err := http.Get(s.srv.URL + "/webhooks/apple") //nolint:noctx // test
+	resp, err := http.Get(s.srv.URL + "/webhooks/apple")
 	s.Require().NoError(err)
 	_ = resp.Body.Close()
 	s.Equal(405, resp.StatusCode)
@@ -317,7 +317,7 @@ func (s *E2ESuite) TestApple_ConcurrentAndDuplicateDeliveries() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			resp, err := http.Post(s.srv.URL+"/webhooks/apple", "application/json", bytes.NewReader(b)) //nolint:noctx // test
+			resp, err := http.Post(s.srv.URL+"/webhooks/apple", "application/json", bytes.NewReader(b))
 			if err != nil {
 				codes[i] = -1
 				return
