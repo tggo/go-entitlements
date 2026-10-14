@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration stress fuzz mutate lint generate-mocks cover run-example
+.PHONY: test-site test test-unit test-integration stress fuzz mutate lint generate-mocks cover run-example
 
 test: test-unit test-integration
 
@@ -80,3 +80,11 @@ hooks:
 	chmod +x .githooks/commit-msg .claude/hooks/dod_reminder.sh 2>/dev/null || true; \
 	echo "✓ git-dod: commit-msg -> .githooks/commit-msg (hooksPath=$$hd)"
 # --- end git-dod -------------------------------------------------------------
+
+# The explainer's JS simulator must agree with the Go library: the Go test
+# checks site/scenarios.json against the real code, node checks it against
+# site/engine.js. Regenerate expectations after an intended change with
+# go test -run TestSiteScenarios -update-site .
+test-site:
+	go test -count=1 -run TestSiteScenarios .
+	node site/check-scenarios.js

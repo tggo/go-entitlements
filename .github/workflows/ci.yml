@@ -25,6 +25,15 @@ jobs:
       - run: make test-integration
       - run: STORETEST_STRESS=light go test -race -count=1 -p=1 -tags=integration -run 'TestStress|TestStoreSuite/TestStress' ./store/...
 
+  site:
+    runs-on: ubuntu-latest # the simulator's JS port must agree with the Go library
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node site/check-scenarios.js
+
   lint:
     runs-on: ubuntu-latest
     steps:

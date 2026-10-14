@@ -93,8 +93,12 @@
    * returns {event} or {error: 'ignored'|'unsupported'|'noexpiry', msg} */
   function appleToEvent(p) {
     if (IGNORED[p.type]) return { error: 'ignored', msg: p.type + ' carries no subscription state.' };
+    if (p.type === 'ONE_TIME_CHARGE') return { error: 'ignored', msg: 'ONE_TIME_CHARGE is a non-subscription purchase, out of scope.' };
     var m = mapType(p.type, p.subtype);
     if (!m) return { error: 'unsupported', msg: 'Unknown notification type ' + p.type + '.' };
+    if ((p.type === 'REFUND' || p.type === 'REVOKE') && p.txType && p.txType !== 'Auto-Renewable Subscription') {
+      return { error: 'ignored', msg: p.type + ' of a ' + p.txType + ' purchase is not subscription state.' };
+    }
     var state = m.state;
     if (m.ambiguous) state = resolve(p, p.status || 0, p.expires, p.signed, !!m.restores);
     else if (state === 'active' && p.revocationDate) state = 'refunded';
@@ -134,7 +138,8 @@
       environment: p.testPurchase ? 'GoogleTest' : '' };
     if (p.kind === 'voided') {
       if (!p.orderMatches) return { error: 'ignored', msg: 'The voided order is not the latest order of the subscription.' };
-      ev.state = 'refunded';
+      // fromVoided sets only ID, source, time, token and state: no user, product or expiry.
+      ev.state = 'refunded'; ev.userId = ''; ev.productId = ''; ev.expiresAt = 0;
       return { event: ev };
     }
     var st = googleMapState(p.subState);
@@ -214,7 +219,84 @@
     return false;
   };
 
+
+  /* ---- everything below is shared by the page and by site/check-scenarios.js ---- */
+
+  var GATE_COUNT = 6;
+  var MAX_FUTURE_SKEW = 5 * 60 * 1000; // google.DefaultMaxFutureSkew
+
+  // Turn a scenarios.json card (ISO dates) into the millisecond form the ports use.
+  function prepare(card) {
+    var p = Object.assign({}, card[card.src]);
+    ['signed', 'expires', 'graceEnd', 'revocationDate', 'eventTime', 'expiry'].forEach(function (k) {
+      if (typeof p[k] === 'string' && p[k]) p[k] = d(p[k]); else if (!p[k]) p[k] = 0;
+    });
+    if (card.src === 'apple') p.status = p.status || 0;
+    return p;
+  }
+
+  /* One delivery, as httpx + the parsers + Service do it.
+   * opts: {wallClock (ms), playDown (bool)}. Returns {code, stamp, cls, text, gates, changed, changed2}. */
+  function deliver(svc, card, opts) {
+    opts = opts || {};
+    var p = prepare(card);
+    var t = { gates: [], code: 200, stamp: 'APPLIED', cls: 'ok', text: '', changed: null, changed2: null };
+    for (var i = 0; i < GATE_COUNT; i++) t.gates.push('skip');
+    function stop(i, code, stamp, cls, text) {
+      for (var k = 0; k < i; k++) t.gates[k] = 'pass';
+      t.gates[i] = 'stop'; t.code = code; t.stamp = stamp; t.cls = cls; t.text = text; return t;
+    }
+    var res;
+    if (card.src === 'apple') {
+      if (card.forged) return stop(0, 401, 'FORGED', 'bad', 'The certificate chain in the header does not end at Apple Root CA - G3. The body is never read. The store gets 401 and the error is logged.');
+      res = appleToEvent(p);
+    } else {
+      if (card.noAuth) return stop(0, 401, 'REJECTED', 'bad', 'The push carries no valid Pub/Sub token for your audience and service account, so the handler answers 401 before it reads the body.');
+      if (p.kind === 'otherPackage' || p.kind === 'test') {
+        res = googleToEvent(p);
+      } else {
+        if (opts.wallClock && p.eventTime > opts.wallClock + MAX_FUTURE_SKEW) {
+          return stop(1, 400, 'REJECTED', 'bad', 'The event time is more than 5 minutes ahead of the clock. If it were stored, every genuine later event would count as older, so the push is refused as malformed (400).');
+        }
+        if (opts.playDown) return stop(1, 500, 'RETRY', 'bad', 'The Play API did not answer. Nothing was recorded, so the 500 makes Pub/Sub send the same push again later.');
+        res = googleToEvent(p);
+      }
+    }
+    if (res.error) {
+      return stop(1, 200, res.error === 'ignored' ? 'IGNORED' : 'SKIPPED', 'mute', res.msg + ' The store gets 200 and stops retrying.');
+    }
+    var ev = res.event;
+    var out = svc.process(ev);
+    if (out.kind === 'ignored') return stop(2, 200, 'IGNORED', 'mute', out.msg + ' The store gets 200.');
+    if (out.kind === 'error') return stop(3, 500, 'RETRY', 'bad', 'The database call failed. The event ID was not recorded and the state did not change, so the 500 makes the store send it again.');
+    if (out.kind === 'duplicate') return stop(3, 200, 'DUPLICATE', 'dup', 'This notification ID was already processed. Nothing changes and the store gets 200, so it stops retrying.');
+    if (out.kind === 'stale') return stop(4, 200, 'STALE', 'warn', out.reason + ' The ID is recorded, the state stays as it was, and the store gets 200.');
+    for (var j = 0; j < GATE_COUNT; j++) t.gates[j] = 'pass';
+    var e = out.ent;
+    t.text = 'Chain ' + e.tx + ' is now ' + e.state + ', expires ' + fmt(e.expiresAt) + ', version ' + e.version + '.';
+    if (ev.inherited) t.text += ' The message had no account id, so the user came from the chain it replaces.';
+    if (out.superseded === 'closed') t.text += ' The old token ' + ev.supersedes + ' was closed.';
+    if (out.superseded === 'tombstone') t.text += ' The old token ' + ev.supersedes + ' was never seen, so a tombstone was written.';
+    t.changed = e.source + '|' + e.tx;
+    if (out.superseded) t.changed2 = e.source + '|' + ev.supersedes;
+    return t;
+  }
+
+  function iso(ms) { return ms ? new Date(ms).toISOString().slice(0, 10) : ''; }
+
+  // The comparable end state: every chain plus access on each check date.
+  function snapshot(svc, user, product, checkDates) {
+    var chains = {};
+    svc.order.forEach(function (k) {
+      var e = svc.chains[k];
+      chains[k] = { state: e.state, version: e.version, expires: iso(e.expiresAt), updated: iso(e.updatedAt), user: e.userId || '' };
+    });
+    var access = {};
+    checkDates.forEach(function (c) { access[c] = svc.isActive(user, product, d(c)); });
+    return { chains: chains, access: access };
+  }
+
   root.Engine = { d: d, fmt: fmt, DAY: DAY, applyEvent: applyEvent, entActive: entActive,
-    appleToEvent: appleToEvent, googleToEvent: googleToEvent, Service: Service, isTerminal: isTerminal };
+    appleToEvent: appleToEvent, googleToEvent: googleToEvent, Service: Service, isTerminal: isTerminal, prepare: prepare, deliver: deliver, snapshot: snapshot, iso: iso, GATE_COUNT: GATE_COUNT };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Engine;
 })(typeof window !== 'undefined' ? window : globalThis);

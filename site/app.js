@@ -5,51 +5,7 @@
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var USER = 'u-7e3f', PRODUCT = 'pro.monthly';
 
-  function ap(o) {
-    return Object.assign({ type: 'DID_RENEW', tx: 'orig-1001', product: PRODUCT, userId: USER, env: '', status: 0 }, o);
-  }
-  function gp(o) {
-    return Object.assign({ kind: 'sub', product: PRODUCT, userId: USER, subState: 'ACTIVE' }, o);
-  }
-
-  var CARDS = [
-    { id: 'a1', src: 'apple', title: 'SUBSCRIBED', sub: 'signed Jan 1, runs to Feb 1', p: ap({ uuid: 'n-01', type: 'SUBSCRIBED', signed: d('2026-01-01'), expires: d('2026-02-01') }) },
-    { id: 'a2', src: 'apple', title: 'DID_RENEW', sub: 'signed Feb 1, runs to Mar 1', p: ap({ uuid: 'n-02', signed: d('2026-02-01'), expires: d('2026-03-01') }) },
-    { id: 'a3', src: 'apple', title: 'DID_RENEW', sub: 'signed Mar 1, runs to Apr 1', p: ap({ uuid: 'n-03', signed: d('2026-03-01'), expires: d('2026-04-01') }) },
-    { id: 'a4', src: 'apple', title: 'DID_FAIL_TO_RENEW', sub: 'grace period, signed Apr 1, until Apr 8', p: ap({ uuid: 'n-04', type: 'DID_FAIL_TO_RENEW', subtype: 'GRACE_PERIOD', signed: d('2026-04-01'), expires: d('2026-04-01'), graceEnd: d('2026-04-08') }) },
-    { id: 'a5', src: 'apple', title: 'EXPIRED', sub: 'signed Apr 8', p: ap({ uuid: 'n-05', type: 'EXPIRED', signed: d('2026-04-08'), expires: d('2026-04-01') }) },
-    { id: 'a6', src: 'apple', title: 'REFUND', sub: 'of the Mar 1 renewal, signed Mar 10', p: ap({ uuid: 'n-06', type: 'REFUND', signed: d('2026-03-10'), expires: d('2026-04-01'), txType: 'Auto-Renewable Subscription' }) },
-    { id: 'a7', src: 'apple', title: 'REFUND', sub: 'of the older Feb 1 renewal, signed Mar 10', p: ap({ uuid: 'n-07', type: 'REFUND', signed: d('2026-03-10'), expires: d('2026-03-01') }) },
-    { id: 'a8', src: 'apple', title: 'DID_CHANGE_RENEWAL_STATUS', sub: 'auto-renew switched off, signed Mar 12', p: ap({ uuid: 'n-08', type: 'DID_CHANGE_RENEWAL_STATUS', status: 1, signed: d('2026-03-12'), expires: d('2026-04-01') }) },
-    { id: 'a9', src: 'apple', title: 'REFUND_REVERSED', sub: 'Apple took the refund back, signed Mar 14', p: ap({ uuid: 'n-09', type: 'REFUND_REVERSED', status: 1, signed: d('2026-03-14'), expires: d('2026-04-01') }) },
-    { id: 'a10', src: 'apple', title: 'DID_RENEW (Sandbox)', sub: 'a TestFlight tester, signed Mar 5', p: ap({ uuid: 'n-10', env: 'Sandbox', signed: d('2026-03-05'), expires: d('2026-04-05') }) },
-    { id: 'a11', src: 'apple', title: 'TEST', sub: 'sent from App Store Connect', p: ap({ uuid: 'n-11', type: 'TEST', signed: d('2026-03-05'), expires: 0 }) },
-    { id: 'a12', src: 'apple', title: 'REFUND (forged)', sub: 'signed by a certificate chain Apple never issued', forged: true, p: ap({ uuid: 'n-12', type: 'REFUND', signed: d('2026-03-20'), expires: d('2026-04-01') }) },
-
-    { id: 'g1', src: 'google', title: 'Purchased (token A)', sub: 'event Jan 1, Play says ACTIVE to Feb 1', p: gp({ messageId: 'm-101', token: 'tokA', eventTime: d('2026-01-01'), expiry: d('2026-02-01') }) },
-    { id: 'g2', src: 'google', title: 'Renewed (token A)', sub: 'event Feb 1, Play says ACTIVE to Mar 1', p: gp({ messageId: 'm-102', token: 'tokA', eventTime: d('2026-02-01'), expiry: d('2026-03-01') }) },
-    { id: 'g3', src: 'google', title: 'Upgrade (token B)', sub: 'event Feb 20, new token linked to token A, no account id', p: gp({ messageId: 'm-103', token: 'tokB', linked: 'tokA', userId: '', eventTime: d('2026-02-20'), expiry: d('2026-03-20') }) },
-    { id: 'g4', src: 'google', title: 'Late renewal (token A)', sub: 'event Feb 15, delivered after the upgrade', p: gp({ messageId: 'm-104', token: 'tokA', eventTime: d('2026-02-15'), expiry: d('2026-03-15') }) },
-    { id: 'g5', src: 'google', title: 'On hold (token B)', sub: 'event Mar 25, payment failed', p: gp({ messageId: 'm-105', token: 'tokB', subState: 'ON_HOLD', eventTime: d('2026-03-25'), expiry: d('2026-03-20') }) },
-    { id: 'g6', src: 'google', title: 'Voided purchase (token B)', sub: 'event Mar 28, refund of the latest order', p: gp({ messageId: 'm-106', token: 'tokB', kind: 'voided', orderMatches: true, eventTime: d('2026-03-28') }) },
-    { id: 'g7', src: 'google', title: 'License-tester purchase', sub: 'event Mar 5, free test purchase', p: gp({ messageId: 'm-108', token: 'tokT', testPurchase: true, eventTime: d('2026-03-05'), expiry: d('2026-04-05') }) },
-    { id: 'g8', src: 'google', title: 'Test message', sub: 'sent from the Play Console', p: gp({ messageId: 'm-107', kind: 'test', eventTime: d('2026-03-05') }) },
-    { id: 'g9', src: 'google', title: 'Another app’s package', sub: 'package name does not match yours', p: gp({ messageId: 'm-109', kind: 'otherPackage', eventTime: d('2026-03-05') }) },
-    { id: 'g10', src: 'google', title: 'Push without a token', sub: 'no Pub/Sub OIDC token on the request', noAuth: true, p: gp({ messageId: 'm-110', token: 'tokA', eventTime: d('2026-03-20'), subState: 'EXPIRED' }) },
-    { id: 'g11', src: 'google', title: 'Event dated next year', sub: 'a forged clock that would block every later event', future: true, p: gp({ messageId: 'm-111', token: 'tokA', eventTime: d('2027-01-01'), expiry: d('2027-02-01') }) }
-  ];
-  var BY_ID = {}; CARDS.forEach(function (c) { BY_ID[c.id] = c; });
-
-  var SCENARIOS = [
-    { name: 'Normal life', note: 'Subscribe, renew, renew. Each message moves the version up by one.', steps: ['a1', 'a2', 'a3'] },
-    { name: 'The store sends it twice', note: 'The second DID_RENEW has the same notification ID, so nothing changes.', steps: ['a1', 'a2', 'a2'] },
-    { name: 'Messages out of order', note: 'The March renewal arrives before the February one. February is older than what is stored.', steps: ['a1', 'a3', 'a2'] },
-    { name: 'Refund, then a bookkeeping message', note: 'After a refund, switching auto-renew off must not give access back. Only a reversal does.', steps: ['a1', 'a3', 'a6', 'a8', 'a9'] },
-    { name: 'A forged refund', note: 'The forged message is rejected before it is even read. The user keeps access.', steps: ['a1', 'a3', 'a12'] },
-    { name: 'Refund of an old renewal', note: 'Refunding the February renewal does not end a chain that already runs to April.', steps: ['a1', 'a3', 'a7'] },
-    { name: 'Google upgrade, then a late message', note: 'Token B closes token A. A late token A event is stale.', steps: ['g1', 'g3', 'g4'] },
-    { name: 'The database blips', note: 'While the database is down the answer is 500 and nothing is recorded, so the retry works.', steps: ['db:down', 'a1', 'db:up', 'a1'] }
-  ];
+  var CARDS = [], SCENARIOS = [], BY_ID = {}, CFG = {};
 
   var GATES = [
     { n: 'Verify', q: 'Is it really from the store?' },
@@ -68,53 +24,15 @@
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms); }); }
 
-  /* ----- delivery: returns a trace ----- */
+  /* ----- delivery: the rules live in Engine.deliver ----- */
   function trace(card) {
-    var t = { gates: GATES.map(function () { return 'skip'; }), code: 200, stamp: 'APPLIED', cls: 'ok', text: '', changed: null };
-    function stop(i, code, stamp, cls, text) {
-      for (var k = 0; k < i; k++) t.gates[k] = 'pass';
-      t.gates[i] = 'stop'; t.code = code; t.stamp = stamp; t.cls = cls; t.text = text; return t;
-    }
-    var res;
-    if (card.src === 'apple') {
-      if (card.forged) return stop(0, 401, 'FORGED', 'bad', 'The certificate chain in the header does not end at Apple Root CA - G3. The body is never read. The store gets 401 and the error is logged.');
-      res = E.appleToEvent(card.p);
-    } else {
-      if (card.noAuth) return stop(0, 401, 'REJECTED', 'bad', 'The push carries no valid Pub/Sub token for your audience and service account, so the handler answers 401 before it reads the body.');
-      if (card.kind === 'x') res = null;
-      if (card.p.kind === 'otherPackage' || card.p.kind === 'test') {
-        res = E.googleToEvent(card.p);
-      } else {
-        if (card.future) return stop(1, 400, 'REJECTED', 'bad', 'The event time is more than 5 minutes ahead of the clock. If it were stored, every genuine later event would count as older, so the push is refused as malformed (400).');
-        if (document.getElementById('playdown').checked) return stop(1, 500, 'RETRY', 'bad', 'The Play API did not answer. Nothing was recorded, so the 500 makes Pub/Sub send the same push again later.');
-        res = E.googleToEvent(card.p);
-      }
-    }
-    if (res.error) {
-      var label = res.error === 'ignored' ? 'IGNORED' : 'SKIPPED';
-      return stop(1, 200, label, 'mute', res.msg + ' The store gets 200 and stops retrying.');
-    }
-    var ev = res.event;
-    var out = svc.process(ev);
-    if (out.kind === 'ignored') return stop(2, 200, 'IGNORED', 'mute', out.msg + ' The store gets 200.');
-    if (out.kind === 'error') return stop(3, 500, 'RETRY', 'bad', 'The database call failed. The event ID was not recorded and the state did not change, so the 500 makes the store send it again.');
-    if (out.kind === 'duplicate') return stop(3, 200, 'DUPLICATE', 'dup', 'This notification ID was already processed. Nothing changes and the store gets 200, so it stops retrying.');
-    if (out.kind === 'stale') return stop(4, 200, 'STALE', 'warn', out.reason + ' The ID is recorded, the state stays as it was, and the store gets 200.');
-    for (var i = 0; i < 6; i++) t.gates[i] = 'pass';
-    var e = out.ent;
-    t.text = 'Chain ' + e.tx + ' is now ' + e.state + ', expires ' + fmt(e.expiresAt) + ', version ' + e.version + '.';
-    if (out.ev.inherited) t.text += ' The message had no account id, so the user came from the chain it replaces.';
-    if (out.superseded === 'closed') t.text += ' The old token ' + ev.supersedes + ' was closed.';
-    if (out.superseded === 'tombstone') t.text += ' The old token ' + ev.supersedes + ' was never seen, so a tombstone was written.';
-    t.changed = e.source + '|' + e.tx;
-    if (out.superseded) t.changed2 = e.source + '|' + ev.supersedes;
-    return t;
+    return E.deliver(svc, card, { wallClock: d(CFG.wallClock), playDown: $('#playdown').checked });
   }
 
   /* ----- rendering ----- */
   function renderTray() {
     var tray = $('#tray'); tray.textContent = '';
-    CARDS.filter(function (c) { return c.src === tab; }).forEach(function (c) {
+    CARDS.filter(function (c) { return c.src === tab && !c.hidden; }).forEach(function (c) {
       var b = el('button', 'env' + (c.forged || c.noAuth || c.future ? ' env-odd' : ''));
       b.type = 'button'; b.draggable = true; b.dataset.id = c.id;
       b.appendChild(el('span', 'env-title', c.title));
@@ -238,6 +156,17 @@
   }
 
   function init() {
+    fetch('scenarios.json').then(function (r) { return r.json(); }).then(function (j) {
+      CFG = j; USER = j.user; PRODUCT = j.product; CARDS = j.cards;
+      CARDS.forEach(function (c) { BY_ID[c.id] = c; });
+      SCENARIOS = j.scenarios.filter(function (s) { return !s.hidden; }).map(function (s) {
+        return { name: s.name, note: s.note, steps: s.steps.map(function (x) { return x.send || (x.db === 'down' ? 'db:down' : 'db:up'); }) };
+      });
+      build();
+    }).catch(function () { $('#why').textContent = 'The simulator could not load scenarios.json.'; });
+  }
+
+  function build() {
     var gl = $('#gates');
     GATES.forEach(function (g, i) {
       var li = el('li'); li.appendChild(el('span', 'g-n', String(i + 1)));
@@ -269,5 +198,5 @@
     setTab('apple'); resetAll();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.__sim = { send: send, play: play, svc: svc, CARDS: CARDS, SCENARIOS: SCENARIOS, trace: trace };
+  window.__sim = { send: send, play: play, svc: svc, cards: function () { return CARDS; }, scenarios: function () { return SCENARIOS; }, trace: trace };
 })();

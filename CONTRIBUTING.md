@@ -8,6 +8,7 @@ make stress             # heavy concurrency stress on both stores
 make fuzz FUZZTIME=30s  # fuzz targets
 make generate-mocks     # mockery, after changing an interface
 make mutate             # mutation testing with gremlins (unit-testable packages), a few minutes
+make test-site          # the explainer's JS simulator vs the real library (needs node)
 ```
 
 - Write the failing test first for a bug fix.
@@ -39,3 +40,10 @@ run, and a cached baseline is so fast that, without it, almost every mutant "tim
 as neither killed nor lived.
 Gremlins reports some lines as "not covered" (multi-condition `switch` cases) although tests run them;
 that is a limit of its coverage mapping.
+
+## The explainer site
+
+`site/` is the GitHub Pages explainer. Its simulator runs `site/engine.js`, a JavaScript port of the state rules.
+`site/scenarios.json` holds every simulator card and scenario plus the outcome the real library gives for each step.
+`TestSiteScenarios` replays them through the real parsers, handlers and `Service`, and `site/check-scenarios.js` replays them through the port, so CI fails when the two drift.
+After an intended behaviour change run `go test -run TestSiteScenarios -update-site .`, then fix `site/engine.js` until `make test-site` passes.

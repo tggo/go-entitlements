@@ -1,0 +1,3547 @@
+{
+ "_comment": "Single source for the simulator cards and scenarios. The \"expect\" blocks are written by the Go test (go test -run TestSiteScenarios -update-site .) and checked by it and by site/check-scenarios.js.",
+ "cards": [
+  {
+   "apple": {
+    "expires": "2026-02-01",
+    "product": "pro.monthly",
+    "signed": "2026-01-01",
+    "tx": "orig-1001",
+    "type": "SUBSCRIBED",
+    "userId": "u-7e3f",
+    "uuid": "n-01"
+   },
+   "id": "a1",
+   "src": "apple",
+   "sub": "signed Jan 1, runs to Feb 1",
+   "title": "SUBSCRIBED"
+  },
+  {
+   "apple": {
+    "expires": "2026-03-01",
+    "product": "pro.monthly",
+    "signed": "2026-02-01",
+    "tx": "orig-1001",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-02"
+   },
+   "id": "a2",
+   "src": "apple",
+   "sub": "signed Feb 1, runs to Mar 1",
+   "title": "DID_RENEW"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-01",
+    "tx": "orig-1001",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-03"
+   },
+   "id": "a3",
+   "src": "apple",
+   "sub": "signed Mar 1, runs to Apr 1",
+   "title": "DID_RENEW"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "graceEnd": "2026-04-08",
+    "product": "pro.monthly",
+    "signed": "2026-04-01",
+    "subtype": "GRACE_PERIOD",
+    "tx": "orig-1001",
+    "type": "DID_FAIL_TO_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-04"
+   },
+   "id": "a4",
+   "src": "apple",
+   "sub": "grace period, signed Apr 1, until Apr 8",
+   "title": "DID_FAIL_TO_RENEW"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-04-08",
+    "tx": "orig-1001",
+    "type": "EXPIRED",
+    "userId": "u-7e3f",
+    "uuid": "n-05"
+   },
+   "id": "a5",
+   "src": "apple",
+   "sub": "signed Apr 8",
+   "title": "EXPIRED"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-10",
+    "tx": "orig-1001",
+    "txType": "Auto-Renewable Subscription",
+    "type": "REFUND",
+    "userId": "u-7e3f",
+    "uuid": "n-06"
+   },
+   "id": "a6",
+   "src": "apple",
+   "sub": "of the Mar 1 renewal, signed Mar 10",
+   "title": "REFUND"
+  },
+  {
+   "apple": {
+    "expires": "2026-03-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-10",
+    "tx": "orig-1001",
+    "type": "REFUND",
+    "userId": "u-7e3f",
+    "uuid": "n-07"
+   },
+   "id": "a7",
+   "src": "apple",
+   "sub": "of the older Feb 1 renewal, signed Mar 10",
+   "title": "REFUND"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-12",
+    "status": 1,
+    "tx": "orig-1001",
+    "type": "DID_CHANGE_RENEWAL_STATUS",
+    "userId": "u-7e3f",
+    "uuid": "n-08"
+   },
+   "id": "a8",
+   "src": "apple",
+   "sub": "auto-renew switched off, signed Mar 12",
+   "title": "DID_CHANGE_RENEWAL_STATUS"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-14",
+    "status": 1,
+    "tx": "orig-1001",
+    "type": "REFUND_REVERSED",
+    "userId": "u-7e3f",
+    "uuid": "n-09"
+   },
+   "id": "a9",
+   "src": "apple",
+   "sub": "Apple took the refund back, signed Mar 14",
+   "title": "REFUND_REVERSED"
+  },
+  {
+   "apple": {
+    "env": "Sandbox",
+    "expires": "2026-04-05",
+    "product": "pro.monthly",
+    "signed": "2026-03-05",
+    "tx": "orig-1001",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-10"
+   },
+   "id": "a10",
+   "src": "apple",
+   "sub": "a TestFlight tester, signed Mar 5",
+   "title": "DID_RENEW (Sandbox)"
+  },
+  {
+   "apple": {
+    "product": "pro.monthly",
+    "signed": "2026-03-05",
+    "tx": "orig-1001",
+    "type": "TEST",
+    "userId": "u-7e3f",
+    "uuid": "n-11"
+   },
+   "id": "a11",
+   "src": "apple",
+   "sub": "sent from App Store Connect",
+   "title": "TEST"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-1001",
+    "type": "REFUND",
+    "userId": "u-7e3f",
+    "uuid": "n-12"
+   },
+   "forged": true,
+   "id": "a12",
+   "src": "apple",
+   "sub": "signed by a certificate chain Apple never issued",
+   "title": "REFUND (forged)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-01-01",
+    "expiry": "2026-02-01",
+    "kind": "sub",
+    "messageId": "m-101",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokA",
+    "userId": "u-7e3f"
+   },
+   "id": "g1",
+   "src": "google",
+   "sub": "event Jan 1, Play says ACTIVE to Feb 1",
+   "title": "Purchased (token A)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-02-01",
+    "expiry": "2026-03-01",
+    "kind": "sub",
+    "messageId": "m-102",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokA",
+    "userId": "u-7e3f"
+   },
+   "id": "g2",
+   "src": "google",
+   "sub": "event Feb 1, Play says ACTIVE to Mar 1",
+   "title": "Renewed (token A)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-02-20",
+    "expiry": "2026-03-20",
+    "kind": "sub",
+    "linked": "tokA",
+    "messageId": "m-103",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokB"
+   },
+   "id": "g3",
+   "src": "google",
+   "sub": "event Feb 20, new token linked to token A, no account id",
+   "title": "Upgrade (token B)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-02-15",
+    "expiry": "2026-03-15",
+    "kind": "sub",
+    "messageId": "m-104",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokA",
+    "userId": "u-7e3f"
+   },
+   "id": "g4",
+   "src": "google",
+   "sub": "event Feb 15, delivered after the upgrade",
+   "title": "Late renewal (token A)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-25",
+    "expiry": "2026-03-20",
+    "kind": "sub",
+    "messageId": "m-105",
+    "product": "pro.monthly",
+    "subState": "ON_HOLD",
+    "token": "tokB",
+    "userId": "u-7e3f"
+   },
+   "id": "g5",
+   "src": "google",
+   "sub": "event Mar 25, payment failed",
+   "title": "On hold (token B)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-28",
+    "kind": "voided",
+    "messageId": "m-106",
+    "orderMatches": true,
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokB",
+    "userId": "u-7e3f"
+   },
+   "id": "g6",
+   "src": "google",
+   "sub": "event Mar 28, refund of the latest order",
+   "title": "Voided purchase (token B)"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-05",
+    "expiry": "2026-04-05",
+    "kind": "sub",
+    "messageId": "m-108",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "testPurchase": true,
+    "token": "tokT",
+    "userId": "u-7e3f"
+   },
+   "id": "g7",
+   "src": "google",
+   "sub": "event Mar 5, free test purchase",
+   "title": "License-tester purchase"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-05",
+    "kind": "test",
+    "messageId": "m-107",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "userId": "u-7e3f"
+   },
+   "id": "g8",
+   "src": "google",
+   "sub": "sent from the Play Console",
+   "title": "Test message"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-05",
+    "kind": "otherPackage",
+    "messageId": "m-109",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "userId": "u-7e3f"
+   },
+   "id": "g9",
+   "src": "google",
+   "sub": "package name does not match yours",
+   "title": "Another app’s package"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "kind": "sub",
+    "messageId": "m-110",
+    "product": "pro.monthly",
+    "subState": "EXPIRED",
+    "token": "tokA",
+    "userId": "u-7e3f"
+   },
+   "id": "g10",
+   "noAuth": true,
+   "src": "google",
+   "sub": "no Pub/Sub OIDC token on the request",
+   "title": "Push without a token"
+  },
+  {
+   "google": {
+    "eventTime": "2027-01-01",
+    "expiry": "2027-02-01",
+    "kind": "sub",
+    "messageId": "m-111",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokA",
+    "userId": "u-7e3f"
+   },
+   "id": "g11",
+   "src": "google",
+   "sub": "a forged clock that would block every later event",
+   "title": "Event dated next year"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-1001",
+    "type": "DID_CHANGE_RENEWAL_PREF",
+    "userId": "u-7e3f",
+    "uuid": "n-13"
+   },
+   "hidden": true,
+   "id": "a13",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "renewal pref change, no status"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-01",
+    "product": "pro.monthly",
+    "signed": "2026-04-01",
+    "tx": "orig-1001",
+    "type": "OFFER_REDEEMED",
+    "userId": "u-7e3f",
+    "uuid": "n-14"
+   },
+   "hidden": true,
+   "id": "a14",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "offer redeemed, expiry equals signed time"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-10",
+    "tx": "orig-1001",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-15"
+   },
+   "hidden": true,
+   "id": "a15",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "renewal signed at the refund time"
+  },
+  {
+   "apple": {
+    "expires": "2026-03-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2016",
+    "type": "DID_FAIL_TO_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-16"
+   },
+   "hidden": true,
+   "id": "a16",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "fail to renew, no grace"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2017",
+    "type": "GRACE_PERIOD_EXPIRED",
+    "userId": "u-7e3f",
+    "uuid": "n-17"
+   },
+   "hidden": true,
+   "id": "a17",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "grace period expired"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2018",
+    "type": "REVOKE",
+    "userId": "u-7e3f",
+    "uuid": "n-18"
+   },
+   "hidden": true,
+   "id": "a18",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "revoke"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2019",
+    "type": "ONE_TIME_CHARGE",
+    "userId": "u-7e3f",
+    "uuid": "n-19"
+   },
+   "hidden": true,
+   "id": "a19",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "one-time charge"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2020",
+    "txType": "Consumable",
+    "type": "REFUND",
+    "userId": "u-7e3f",
+    "uuid": "n-20"
+   },
+   "hidden": true,
+   "id": "a20",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "refund of a consumable"
+  },
+  {
+   "apple": {
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2021",
+    "type": "SUBSCRIBED",
+    "userId": "u-7e3f",
+    "uuid": "n-21"
+   },
+   "hidden": true,
+   "id": "a21",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "subscribed without expiry"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "subtype": "GRACE_PERIOD",
+    "tx": "orig-2022",
+    "type": "DID_FAIL_TO_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-22"
+   },
+   "hidden": true,
+   "id": "a22",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "grace without end date"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "tx": "orig-2023",
+    "type": "FOO_BAR",
+    "userId": "u-7e3f",
+    "uuid": "n-23"
+   },
+   "hidden": true,
+   "id": "a23",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "unknown type"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "revocationDate": "2026-03-19",
+    "signed": "2026-03-20",
+    "tx": "orig-2024",
+    "type": "DID_RENEW",
+    "userId": "u-7e3f",
+    "uuid": "n-24"
+   },
+   "hidden": true,
+   "id": "a24",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "renewal with revocation date"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "signed": "2026-03-20",
+    "status": 4,
+    "tx": "orig-2025",
+    "type": "DID_CHANGE_RENEWAL_STATUS",
+    "userId": "u-7e3f",
+    "uuid": "n-25"
+   },
+   "hidden": true,
+   "id": "a25",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "renewal status change, status 4"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-12",
+    "product": "pro.monthly",
+    "subState": "PENDING_PURCHASE_CANCELED",
+    "token": "tokC",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g12",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "purchase canceled before start"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-13",
+    "product": "pro.monthly",
+    "subState": "PENDING",
+    "token": "tokD",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g13",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "pending first payment"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-14",
+    "product": "pro.monthly",
+    "subState": "CANCELED",
+    "token": "tokE",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g14",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "canceled, still paid"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-15",
+    "product": "pro.monthly",
+    "subState": "IN_GRACE_PERIOD",
+    "token": "tokF",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g15",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "in grace"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "sub",
+    "messageId": "m-16",
+    "product": "pro.monthly",
+    "subState": "PAUSED",
+    "token": "tokG",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g16",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "paused"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "kind": "sub",
+    "messageId": "m-17",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokH",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g17",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "active without expiry"
+  },
+  {
+   "google": {
+    "eventTime": "2026-03-20",
+    "expiry": "2026-04-20",
+    "kind": "voided",
+    "messageId": "m-18",
+    "product": "pro.monthly",
+    "subState": "ACTIVE",
+    "token": "tokA",
+    "userId": "u-7e3f"
+   },
+   "hidden": true,
+   "id": "g18",
+   "src": "google",
+   "sub": "golden-test only",
+   "title": "voided, not the latest order"
+  },
+  {
+   "apple": {
+    "expires": "2026-04-20",
+    "product": "pro.monthly",
+    "revocationDate": "2026-03-19",
+    "signed": "2026-03-20",
+    "status": 1,
+    "tx": "orig-2026",
+    "type": "DID_CHANGE_RENEWAL_STATUS",
+    "userId": "u-7e3f",
+    "uuid": "n-26"
+   },
+   "hidden": true,
+   "id": "a26",
+   "src": "apple",
+   "sub": "golden-test only",
+   "title": "status change with a revocation date"
+  }
+ ],
+ "checkDates": [
+  "2026-03-15",
+  "2026-04-05"
+ ],
+ "product": "pro.monthly",
+ "scenarios": [
+  {
+   "name": "Normal life",
+   "note": "Subscribe, renew, renew. Each message moves the version up by one.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    }
+   ]
+  },
+  {
+   "name": "The store sends it twice",
+   "note": "The second DID_RENEW has the same notification ID, so nothing changes.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "DUPLICATE"
+     },
+     "send": "a2"
+    }
+   ]
+  },
+  {
+   "name": "Messages out of order",
+   "note": "The March renewal arrives before the February one. February is older than what is stored.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a2"
+    }
+   ]
+  },
+  {
+   "name": "Refund, then a bookkeeping message",
+   "note": "After a refund, switching auto-renew off must not give access back. Only a reversal does.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a8"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a9"
+    }
+   ]
+  },
+  {
+   "name": "A forged refund",
+   "note": "The forged message is rejected before it is even read. The user keeps access.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 401,
+      "stamp": "FORGED"
+     },
+     "send": "a12"
+    }
+   ]
+  },
+  {
+   "name": "Refund of an old renewal",
+   "note": "Refunding the February renewal does not end a chain that already runs to April.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a7"
+    }
+   ]
+  },
+  {
+   "name": "Google upgrade, then a late message",
+   "note": "Token B closes token A. A late token A event is stale.",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "g4"
+    }
+   ]
+  },
+  {
+   "name": "The database blips",
+   "note": "While the database is down the answer is 500 and nothing is recorded, so the retry works.",
+   "steps": [
+    {
+     "db": "down"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {},
+      "code": 500,
+      "stamp": "RETRY"
+     },
+     "send": "a1"
+    },
+    {
+     "db": "up"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "every Apple card in tray order",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-08",
+        "state": "grace",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a5"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a7"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a8"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a9"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "a10"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "a11"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 5
+       }
+      },
+      "code": 401,
+      "stamp": "FORGED"
+     },
+     "send": "a12"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "every Google card in tray order",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "g4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-25",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g5"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g7"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g8"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g9"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 401,
+      "stamp": "REJECTED"
+     },
+     "send": "g10"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "u-7e3f",
+        "version": 3
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 400,
+      "stamp": "REJECTED"
+     },
+     "send": "g11"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "Apple card order reversed",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {},
+      "code": 401,
+      "stamp": "FORGED"
+     },
+     "send": "a12"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {},
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "a11"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {},
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "a10"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a9"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a8"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a7"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-14",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a5"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a1"
+    }
+   ]
+  },
+  {
+   "allowSandbox": true,
+   "hidden": true,
+   "name": "test purchases allowed",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-05",
+        "state": "active",
+        "updated": "2026-03-05",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a10"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-05",
+        "state": "active",
+        "updated": "2026-03-05",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokT": {
+        "expires": "2026-04-05",
+        "state": "active",
+        "updated": "2026-03-05",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g7"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-05",
+        "state": "active",
+        "updated": "2026-03-05",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokT": {
+        "expires": "2026-04-05",
+        "state": "active",
+        "updated": "2026-03-05",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "Play API down then back",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "playDown": true
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 500,
+      "stamp": "RETRY"
+     },
+     "send": "g2"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 500,
+      "stamp": "RETRY"
+     },
+     "send": "g6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g8"
+    },
+    {
+     "playDown": false
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g2"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "database down on Google",
+   "steps": [
+    {
+     "db": "down"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {},
+      "code": 500,
+      "stamp": "RETRY"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {},
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g8"
+    },
+    {
+     "db": "up"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "DUPLICATE"
+     },
+     "send": "g1"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "Google upgrade without prior token",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "",
+        "version": 1
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "",
+        "version": 1
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "g4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "",
+        "state": "expired",
+        "updated": "2026-02-20",
+        "user": "",
+        "version": 1
+       },
+       "google|tokB": {
+        "expires": "2026-03-20",
+        "state": "active",
+        "updated": "2026-02-20",
+        "user": "",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "g2"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "grace then expired",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-08",
+        "state": "grace",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a4"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-08",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a5"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "voided then late renewal",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokB": {
+        "expires": "",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-03-01",
+        "state": "active",
+        "updated": "2026-02-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "google|tokB": {
+        "expires": "",
+        "state": "refunded",
+        "updated": "2026-03-28",
+        "user": "",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g2"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "two events signed at the same time",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-03-01",
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 4
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a7"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "more Apple mappings",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a13"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a14"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a16"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a17"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a18"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "a19"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "a20"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "SKIPPED"
+     },
+     "send": "a21"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "SKIPPED"
+     },
+     "send": "a22"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "SKIPPED"
+     },
+     "send": "a23"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2024": {
+        "expires": "2026-04-20",
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a24"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2024": {
+        "expires": "2026-04-20",
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "SKIPPED"
+     },
+     "send": "a25"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "expired",
+        "updated": "2026-04-01",
+        "user": "u-7e3f",
+        "version": 2
+       },
+       "apple|orig-2016": {
+        "expires": "2026-03-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2017": {
+        "expires": "2026-04-20",
+        "state": "billing_retry",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2018": {
+        "expires": "2026-04-20",
+        "state": "revoked",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2024": {
+        "expires": "2026-04-20",
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "apple|orig-2026": {
+        "expires": "2026-04-20",
+        "state": "refunded",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a26"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "active event signed at the refund time",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "active",
+        "updated": "2026-03-01",
+        "user": "u-7e3f",
+        "version": 2
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a3"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "a6"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "apple|orig-1001": {
+        "expires": "2026-04-01",
+        "state": "refunded",
+        "updated": "2026-03-10",
+        "user": "u-7e3f",
+        "version": 3
+       }
+      },
+      "code": 200,
+      "stamp": "STALE"
+     },
+     "send": "a15"
+    }
+   ]
+  },
+  {
+   "hidden": true,
+   "name": "more Google states",
+   "steps": [
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g12"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": false,
+       "2026-04-05": false
+      },
+      "chains": {
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g13"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokE": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g14"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokE": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokF": {
+        "expires": "2026-04-20",
+        "state": "grace",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g15"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokE": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokF": {
+        "expires": "2026-04-20",
+        "state": "grace",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokG": {
+        "expires": "2026-04-20",
+        "state": "paused",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g16"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokE": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokF": {
+        "expires": "2026-04-20",
+        "state": "grace",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokG": {
+        "expires": "2026-04-20",
+        "state": "paused",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "SKIPPED"
+     },
+     "send": "g17"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokE": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokF": {
+        "expires": "2026-04-20",
+        "state": "grace",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokG": {
+        "expires": "2026-04-20",
+        "state": "paused",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "APPLIED"
+     },
+     "send": "g1"
+    },
+    {
+     "expect": {
+      "access": {
+       "2026-03-15": true,
+       "2026-04-05": true
+      },
+      "chains": {
+       "google|tokA": {
+        "expires": "2026-02-01",
+        "state": "active",
+        "updated": "2026-01-01",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokC": {
+        "expires": "2026-04-20",
+        "state": "expired",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokE": {
+        "expires": "2026-04-20",
+        "state": "active",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokF": {
+        "expires": "2026-04-20",
+        "state": "grace",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       },
+       "google|tokG": {
+        "expires": "2026-04-20",
+        "state": "paused",
+        "updated": "2026-03-20",
+        "user": "u-7e3f",
+        "version": 1
+       }
+      },
+      "code": 200,
+      "stamp": "IGNORED"
+     },
+     "send": "g18"
+    }
+   ]
+  }
+ ],
+ "user": "u-7e3f",
+ "wallClock": "2026-06-01"
+}
