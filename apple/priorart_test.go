@@ -52,6 +52,7 @@ func appleLibVerifier(t *testing.T, bundle string) *apple.Verifier {
 }
 
 func mockJWS(t *testing.T, name string) string {
+	t.Helper()
 	return strings.TrimSpace(string(readFile(t, pyDir, "mock_signed_data", name)))
 }
 
@@ -150,7 +151,8 @@ func TestPriorArt_DatalessAndUnmappedNotifications(t *testing.T) {
 	}
 
 	cr := load("signedConsumptionRequestNotification.json")
-	data := cr["data"].(map[string]any)
+	data, ok := cr["data"].(map[string]any)
+	require.True(t, ok)
 	data["signedTransactionInfo"] = ca.Sign(t, map[string]any{"transactionId": "1", "originalTransactionId": "1", "bundleId": "com.example", "productId": "p", "environment": "LocalTesting"})
 	data["signedRenewalInfo"] = ca.Sign(t, map[string]any{"environment": "LocalTesting"})
 	_, err = p.Parse(body(cr))

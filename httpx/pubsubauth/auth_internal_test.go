@@ -1,4 +1,4 @@
-package httpx
+package pubsubauth
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/api/idtoken"
 )
 
@@ -36,18 +37,36 @@ func TestPubSubAuthenticator(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodPost, "/", nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 			if tt.header != "" {
 				r.Header.Set("Authorization", tt.header)
 			}
-			err := newPubSubAuthenticator(aud, email, tt.v)(r)
+			err := newAuthenticator(aud, email, tt.v)(r)
 			assert.Equal(t, tt.wantErr, err != nil, "%v", err)
 		})
 	}
 }
 
 func TestNewPubSubAuthenticator_RealValidatorRejectsGarbage(t *testing.T) {
-	r := httptest.NewRequest(http.MethodPost, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 	r.Header.Set("Authorization", "Bearer not-a-jwt")
-	assert.Error(t, NewPubSubAuthenticator("aud", "e@x.com")(r))
+	auth, err := New("aud", "e@x.com")
+	require.NoError(t, err)
+	assert.Error(t, auth(r))
+}
+
+func TestNew_RequiresAudienceAndEmail(t *testing.T) {
+	t.Parallel()
+	for name, args := range map[string][2]string{
+		"empty audience": {"", "e@x.com"},
+		"empty email":    {"aud", ""},
+		"both empty":     {"", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			auth, err := New(args[0], args[1])
+			require.Error(t, err)
+			assert.Nil(t, auth)
+		})
+	}
 }

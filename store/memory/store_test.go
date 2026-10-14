@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -86,7 +87,7 @@ func TestStore_CancelledContext(t *testing.T) {
 func TestStore_ListByUser(t *testing.T) {
 	st := memory.New()
 	for i, tx := range []string{"b", "a"} {
-		e := event(fmt.Sprint(i), entitlements.StateActive, t0)
+		e := event(strconv.Itoa(i), entitlements.StateActive, t0)
 		e.OriginalTxID = tx
 		_, err := process(st, e)
 		require.NoError(t, err)
@@ -106,7 +107,7 @@ func TestStore_Concurrent(t *testing.T) {
 	st := memory.New()
 	const n = 50
 	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
+	for i := range n {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -132,5 +133,18 @@ func TestStore_ListByUser_EmptyUserMatchesNothing(t *testing.T) {
 	assert.Empty(t, list)
 	got, err := st.Get(context.Background(), e.Source, e.OriginalTxID)
 	require.NoError(t, err)
-	assert.Equal(t, "", got.UserID)
+	assert.Empty(t, got.UserID)
+}
+
+func TestStore_DedupeIsPerSource(t *testing.T) {
+	st := memory.New()
+	a := event("same-id", entitlements.StateActive, t0)
+	g := a
+	g.Source, g.OriginalTxID = entitlements.SourceGoogle, "tokG"
+	_, err := process(st, a)
+	require.NoError(t, err)
+	_, err = process(st, g)
+	require.NoError(t, err, "same event ID from another source is not a duplicate")
+	_, err = process(st, a)
+	assert.ErrorIs(t, err, entitlements.ErrDuplicate)
 }

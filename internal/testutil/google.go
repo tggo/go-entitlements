@@ -10,20 +10,20 @@ import (
 )
 
 // GoogleFixture returns the raw bytes of testdata/google/<name>.
-func GoogleFixture(t testing.TB, name string) []byte {
-	t.Helper()
+func GoogleFixture(tb testing.TB, name string) []byte {
+	tb.Helper()
 	_, file, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(file), "..", "..")
 	b, err := os.ReadFile(filepath.Join(root, "testdata", "google", name))
 	if err != nil {
-		t.Fatalf("read fixture %s: %v", name, err)
+		tb.Fatalf("read fixture %s: %v", name, err)
 	}
 	return b
 }
 
 // GooglePushBody wraps a payload in a Pub/Sub push envelope with the given messageId.
-func GooglePushBody(t testing.TB, messageID string, payload []byte) []byte {
-	t.Helper()
+func GooglePushBody(tb testing.TB, messageID string, payload []byte) []byte {
+	tb.Helper()
 	body, err := json.Marshal(map[string]any{
 		"message": map[string]any{
 			"data":        base64.StdEncoding.EncodeToString(payload),
@@ -33,7 +33,7 @@ func GooglePushBody(t testing.TB, messageID string, payload []byte) []byte {
 		"subscription": "projects/p/subscriptions/s",
 	})
 	if err != nil {
-		t.Fatalf("marshal envelope: %v", err)
+		tb.Fatalf("marshal envelope: %v", err)
 	}
 	return body
 }

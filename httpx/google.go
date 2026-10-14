@@ -3,9 +3,8 @@ package httpx
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
-
-	"go.uber.org/zap"
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
@@ -20,7 +19,7 @@ type GoogleParser interface {
 type googleHandler struct {
 	parser GoogleParser
 	svc    Processor
-	log    *zap.Logger
+	log    *slog.Logger
 	cfg    config
 }
 
@@ -31,17 +30,17 @@ type googleHandler struct {
 // redelivery cannot fix it. A 401/403 from the Play API is a configuration
 // error: 500 with an error log that says so. Any other fetch failure (5xx,
 // 429, timeouts) answers 500 so Pub/Sub redelivers.
-func NewGoogleHandler(parser GoogleParser, svc Processor, logger *zap.Logger, opts ...Option) http.Handler {
+func NewGoogleHandler(parser GoogleParser, svc Processor, logger *slog.Logger, opts ...Option) http.Handler {
 	if logger == nil {
-		logger = zap.NewNop()
+		logger = slog.New(slog.DiscardHandler)
 	}
-	return &googleHandler{parser: parser, svc: svc, log: logger.With(zap.String("handler", "google")), cfg: newConfig(opts)}
+	return &googleHandler{parser: parser, svc: svc, log: logger.With("handler", "google"), cfg: newConfig(opts)}
 }
 
 func (h *googleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && h.cfg.auth != nil {
 		if err := h.cfg.auth(r); err != nil {
-			h.log.Error("rejected push: authentication failed", zap.Error(err), zap.String("remote", r.RemoteAddr))
+			h.log.Error("rejected push: authentication failed", "error", err, "remote", r.RemoteAddr)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -54,29 +53,34 @@ func (h *googleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		process(w, r, h.svc, ev, h.log)
+	case errors.Is(err, google.ErrNoExpiry):
+		// A granting event was dropped; the entitlement stays as it was until
+		// the next notification repairs it.
+		h.log.Error("granting subscription without expiryTime dropped, acknowledged", "error", err)
+		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, entitlements.ErrIgnored), errors.Is(err, entitlements.ErrUnsupported):
-		h.log.Warn("notification not applicable", zap.Error(err))
+		h.log.Warn("notification not applicable", "error", err)
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, google.ErrPackageMismatch):
-		h.log.Warn("notification for another package, acknowledged", zap.Error(err))
+		h.log.Warn("notification for another package, acknowledged", "error", err)
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, google.ErrPurchaseNotFound):
-		h.log.Warn("purchase token unknown or expired", zap.Error(err), zap.String("action", "acknowledged"))
+		h.log.Warn("purchase token unknown or expired", "error", err, "action", "acknowledged")
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, google.ErrFetchConfig):
-		h.log.Error("play api credentials or permissions rejected", zap.Error(err))
+		h.log.Error("play api credentials or permissions rejected", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	case errors.Is(err, google.ErrFetchTransient):
-		h.log.Error("play api transient failure", zap.Error(err), zap.String("action", "pubsub will redeliver"))
+		h.log.Error("play api transient failure", "error", err, "action", "pubsub will redeliver")
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	case errors.Is(err, google.ErrMalformed):
-		h.log.Error("rejected push: malformed", zap.Error(err), zap.String("remote", r.RemoteAddr))
+		h.log.Error("rejected push: malformed", "error", err, "remote", r.RemoteAddr)
 		http.Error(w, "bad request", http.StatusBadRequest)
 	case errors.Is(err, entitlements.ErrInvalidSignature):
-		h.log.Error("rejected push: invalid signature", zap.Error(err))
+		h.log.Error("rejected push: invalid signature", "error", err)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	default:
-		h.log.Error("parse push", zap.Error(err))
+		h.log.Error("parse push", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }

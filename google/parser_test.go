@@ -26,6 +26,7 @@ func fetchedSub(t *testing.T, name string) *google.SubscriptionPurchaseV2 {
 }
 
 func TestParser_SubscriptionStates(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		fixture string
 		want    entitlements.State
@@ -40,11 +41,12 @@ func TestParser_SubscriptionStates(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.fixture, func(t *testing.T) {
+			t.Parallel()
 			f := mocks.NewMockSubscriptionsFetcher(t)
 			f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(fetchedSub(t, tc.fixture), nil)
 			body := testutil.GooglePushBody(t, "msg-1", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-			ev, err := google.NewParser(f, google.WithPackageName(pkg)).Parse(context.Background(), body)
+			ev, err := newParser(t, f, google.WithPackageName(pkg)).Parse(context.Background(), body)
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, ev.State)
@@ -61,31 +63,34 @@ func TestParser_SubscriptionStates(t *testing.T) {
 }
 
 func TestParser_PendingIsIgnored(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(fetchedSub(t, "sub_state_pending.json"), nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-	_, err := google.NewParser(f).Parse(context.Background(), body)
+	_, err := newParser(t, f).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, entitlements.ErrIgnored)
 }
 
 func TestParser_UnknownStateUnsupported(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(fetchedSub(t, "sub_state_unknown.json"), nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-	_, err := google.NewParser(f).Parse(context.Background(), body)
+	_, err := newParser(t, f).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, entitlements.ErrUnsupported)
 }
 
 func TestParser_LinkedTokenUpgradePicksLatestExpiry(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "new-token").Return(fetchedSub(t, "sub_linked_upgrade.json"), nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription_upgrade.json"))
 
-	ev, err := google.NewParser(f).Parse(context.Background(), body)
+	ev, err := newParser(t, f).Parse(context.Background(), body)
 
 	require.NoError(t, err)
 	assert.Equal(t, "new-token", ev.OriginalTxID)
@@ -95,23 +100,25 @@ func TestParser_LinkedTokenUpgradePicksLatestExpiry(t *testing.T) {
 }
 
 func TestParser_NoLineItemsRefusedWhenGranting(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").
 		Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateActive}, nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-	_, err := google.NewParser(f).Parse(context.Background(), body)
+	_, err := newParser(t, f).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, google.ErrNoExpiry)
 }
 
 func TestParser_NoLineItemsKeepsNotificationProductWhenNotGranting(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").
 		Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired}, nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-	ev, err := google.NewParser(f).Parse(context.Background(), body)
+	ev, err := newParser(t, f).Parse(context.Background(), body)
 
 	require.NoError(t, err)
 	assert.Equal(t, "premium.monthly", ev.ProductID)
@@ -120,10 +127,11 @@ func TestParser_NoLineItemsKeepsNotificationProductWhenNotGranting(t *testing.T)
 }
 
 func TestParser_VoidedWithoutFetch(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t) // any call would fail the test
 	body := testutil.GooglePushBody(t, "msg-v", testutil.GoogleFixture(t, "notif_voided.json"))
 
-	ev, err := google.NewParser(f).Parse(context.Background(), body)
+	ev, err := newParser(t, f).Parse(context.Background(), body)
 
 	require.NoError(t, err)
 	assert.Equal(t, entitlements.StateRefunded, ev.State)
@@ -132,51 +140,57 @@ func TestParser_VoidedWithoutFetch(t *testing.T) {
 }
 
 func TestParser_TestNotificationIgnored(t *testing.T) {
+	t.Parallel()
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_test.json"))
 
-	_, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
+	_, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, entitlements.ErrIgnored)
 }
 
 func TestParser_UnknownNotificationUnsupported(t *testing.T) {
+	t.Parallel()
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_unknown.json"))
 
-	_, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
+	_, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, entitlements.ErrUnsupported)
 }
 
 func TestParser_WrongPackage(t *testing.T) {
+	t.Parallel()
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_wrong_package.json"))
 
-	_, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t), google.WithPackageName(pkg)).Parse(context.Background(), body)
+	_, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t), google.WithPackageName(pkg)).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, google.ErrPackageMismatch)
 }
 
 func TestParser_FetcherError(t *testing.T) {
+	t.Parallel()
 	boom := errors.New("boom")
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(nil, boom)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-	_, err := google.NewParser(f).Parse(context.Background(), body)
+	_, err := newParser(t, f).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, boom)
 }
 
 func TestParser_FetcherReturnsNil(t *testing.T) {
+	t.Parallel()
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(nil, nil)
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-	_, err := google.NewParser(f).Parse(context.Background(), body)
+	_, err := newParser(t, f).Parse(context.Background(), body)
 
 	assert.Error(t, err)
 }
 
 func TestParser_Malformed(t *testing.T) {
+	t.Parallel()
 	cases := map[string][]byte{
 		"not json envelope": []byte("{"),
 		"bad base64":        testutil.GoogleFixture(t, "envelope_bad_base64.json"),
@@ -187,13 +201,15 @@ func TestParser_Malformed(t *testing.T) {
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
-			_, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
+			t.Parallel()
+			_, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
 			assert.ErrorIs(t, err, google.ErrMalformed)
 		})
 	}
 }
 
 func TestMillis(t *testing.T) {
+	t.Parallel()
 	var d google.DeveloperNotification
 	require.NoError(t, jsonUnmarshal([]byte(`{"eventTimeMillis":1760436000000}`), &d))
 	assert.Equal(t, time.UnixMilli(1760436000000).UTC(), d.EventTimeMillis.Time())

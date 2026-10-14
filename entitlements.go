@@ -12,20 +12,32 @@ import (
 type State string
 
 const (
-	StateActive       State = "active"
-	StateGrace        State = "grace"
+	// StateActive grants access until ExpiresAt.
+	StateActive State = "active"
+	// StateGrace grants access while the store retries a failed payment;
+	// ExpiresAt is the end of the grace period.
+	StateGrace State = "grace"
+	// StateBillingRetry means payment failed and the store keeps retrying
+	// without a grace period; no access.
 	StateBillingRetry State = "billing_retry"
-	StatePaused       State = "paused"
-	StateExpired      State = "expired"
-	StateRefunded     State = "refunded"
-	StateRevoked      State = "revoked"
+	// StatePaused means the user paused the subscription (Google); no access.
+	StatePaused State = "paused"
+	// StateExpired means the subscription ended; no access.
+	StateExpired State = "expired"
+	// StateRefunded means the purchase was refunded; terminal, no access.
+	StateRefunded State = "refunded"
+	// StateRevoked means access was revoked (e.g. Family Sharing removed);
+	// terminal, no access.
+	StateRevoked State = "revoked"
 )
 
 // Source is the store an event came from.
 type Source string
 
 const (
-	SourceApple  Source = "apple"
+	// SourceApple is the App Store.
+	SourceApple Source = "apple"
+	// SourceGoogle is Google Play.
 	SourceGoogle Source = "google"
 )
 
@@ -90,6 +102,10 @@ var (
 	ErrIgnored = errors.New("entitlements: ignored notification")
 	// ErrNotFound means no entitlement exists for the key.
 	ErrNotFound = errors.New("entitlements: not found")
+	// ErrInvalidEvent means the event lacks ID, Source, OriginalTxID or State.
+	// Retrying cannot help; transports should acknowledge or reject it, not
+	// ask the store to redeliver.
+	ErrInvalidEvent = errors.New("entitlements: invalid event")
 	// ErrInvalidSignature means the payload failed verification.
 	ErrInvalidSignature = errors.New("entitlements: invalid signature")
 )

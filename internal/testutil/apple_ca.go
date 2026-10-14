@@ -39,24 +39,24 @@ type AppleCA struct {
 	Pool         *x509.CertPool // contains Root only
 }
 
-func newKey(t testing.TB) *ecdsa.PrivateKey {
-	t.Helper()
+func newKey(tb testing.TB) *ecdsa.PrivateKey {
+	tb.Helper()
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return k
 }
 
-func sign(t testing.TB, tmpl, parent *x509.Certificate, pub *ecdsa.PublicKey, signer *ecdsa.PrivateKey) *x509.Certificate {
-	t.Helper()
+func sign(tb testing.TB, tmpl, parent *x509.Certificate, pub *ecdsa.PublicKey, signer *ecdsa.PrivateKey) *x509.Certificate {
+	tb.Helper()
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, parent, pub, signer)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	c, err := x509.ParseCertificate(der)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return c
 }
@@ -66,8 +66,8 @@ var nextSerial int64 = 1000
 func serial() *big.Int { nextSerial++; return big.NewInt(nextSerial) }
 
 // NewAppleCA generates a fresh chain valid around time.Now().
-func NewAppleCA(t testing.TB, opts ...AppleCAOptions) *AppleCA {
-	t.Helper()
+func NewAppleCA(tb testing.TB, opts ...AppleCAOptions) *AppleCA {
+	tb.Helper()
 	var o AppleCAOptions
 	if len(opts) > 0 {
 		o = opts[0]
@@ -75,13 +75,13 @@ func NewAppleCA(t testing.TB, opts ...AppleCAOptions) *AppleCA {
 	now := time.Now()
 	nullExt := []byte{0x05, 0x00}
 
-	rootKey, interKey, leafKey := newKey(t), newKey(t), newKey(t)
+	rootKey, interKey, leafKey := newKey(tb), newKey(tb), newKey(tb)
 	rootTmpl := &x509.Certificate{
 		SerialNumber: serial(), Subject: pkix.Name{CommonName: "Test Apple Root CA"},
 		NotBefore: now.Add(-72 * time.Hour), NotAfter: now.Add(24 * time.Hour * 365),
 		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
 	}
-	root := sign(t, rootTmpl, rootTmpl, &rootKey.PublicKey, rootKey)
+	root := sign(tb, rootTmpl, rootTmpl, &rootKey.PublicKey, rootKey)
 
 	interTmpl := &x509.Certificate{
 		SerialNumber: serial(), Subject: pkix.Name{CommonName: "Test Apple WWDR Intermediate"},
@@ -92,7 +92,7 @@ func NewAppleCA(t testing.TB, opts ...AppleCAOptions) *AppleCA {
 	if !o.OmitIntermediateOID {
 		interTmpl.ExtraExtensions = []pkix.Extension{{Id: oidAppleIntermediate, Value: nullExt}}
 	}
-	inter := sign(t, interTmpl, root, &interKey.PublicKey, rootKey)
+	inter := sign(tb, interTmpl, root, &interKey.PublicKey, rootKey)
 
 	leafTmpl := &x509.Certificate{
 		SerialNumber: serial(), Subject: pkix.Name{CommonName: "Test Prod ECC Mac App Store Receipt Signing"},
@@ -105,7 +105,7 @@ func NewAppleCA(t testing.TB, opts ...AppleCAOptions) *AppleCA {
 	if !o.OmitLeafOID {
 		leafTmpl.ExtraExtensions = []pkix.Extension{{Id: oidAppleLeaf, Value: nullExt}}
 	}
-	leaf := sign(t, leafTmpl, inter, &leafKey.PublicKey, interKey)
+	leaf := sign(tb, leafTmpl, inter, &leafKey.PublicKey, interKey)
 
 	pool := x509.NewCertPool()
 	pool.AddCert(root)
@@ -119,22 +119,22 @@ func (ca *AppleCA) RootPEM() []byte {
 
 // Sign produces a real ES256 JWS over claims with the x5c chain
 // [leaf, intermediate, root] in the header.
-func (ca *AppleCA) Sign(t testing.TB, claims any) string {
-	t.Helper()
-	return ca.SignWithKey(t, ca.LeafKey, claims)
+func (ca *AppleCA) Sign(tb testing.TB, claims any) string {
+	tb.Helper()
+	return ca.SignWithKey(tb, ca.LeafKey, claims)
 }
 
 // SignWithKey is like Sign but signs with key instead of the leaf key
 // (to simulate a forged signature).
-func (ca *AppleCA) SignWithKey(t testing.TB, key *ecdsa.PrivateKey, claims any) string {
-	t.Helper()
-	return SignChain(t, key, [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw, ca.Root.Raw}, claims)
+func (ca *AppleCA) SignWithKey(tb testing.TB, key *ecdsa.PrivateKey, claims any) string {
+	tb.Helper()
+	return SignChain(tb, key, [][]byte{ca.Leaf.Raw, ca.Intermediate.Raw, ca.Root.Raw}, claims)
 }
 
 // SignChain produces an ES256 JWS signed with key and the given DER
 // certificates as the x5c header.
-func SignChain(t testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) string {
-	t.Helper()
+func SignChain(tb testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) string {
+	tb.Helper()
 	certs := make([]string, len(x5c))
 	for i, der := range x5c {
 		certs[i] = base64.StdEncoding.EncodeToString(der)
@@ -142,17 +142,17 @@ func SignChain(t testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) st
 	hdr := map[string]any{"alg": "ES256", "x5c": certs}
 	hb, err := json.Marshal(hdr)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	cb, err := json.Marshal(claims)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	signing := base64.RawURLEncoding.EncodeToString(hb) + "." + base64.RawURLEncoding.EncodeToString(cb)
 	digest := sha256.Sum256([]byte(signing))
 	r, s, err := ecdsa.Sign(rand.Reader, key, digest[:])
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	sig := make([]byte, 64)
 	r.FillBytes(sig[:32])
@@ -161,4 +161,7 @@ func SignChain(t testing.TB, key *ecdsa.PrivateKey, x5c [][]byte, claims any) st
 }
 
 // NewAppleKey returns a fresh P-256 key (for forged-signature tests).
-func NewAppleKey(t testing.TB) *ecdsa.PrivateKey { return newKey(t) }
+func NewAppleKey(tb testing.TB) *ecdsa.PrivateKey {
+	tb.Helper()
+	return newKey(tb)
+}

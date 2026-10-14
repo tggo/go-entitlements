@@ -1,8 +1,7 @@
-package google_test
+package androidpublisher_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,25 +9,25 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/api/androidpublisher/v3"
+	play "google.golang.org/api/androidpublisher/v3"
 	"google.golang.org/api/option"
 
 	"github.com/tggo/go-entitlements/google"
+	"github.com/tggo/go-entitlements/google/androidpublisher"
 )
 
-func jsonUnmarshal(b []byte, v any) error { return json.Unmarshal(b, v) }
-
-func newFetcher(t *testing.T, h http.HandlerFunc) *google.AndroidPublisherFetcher {
+func newFetcher(t *testing.T, h http.HandlerFunc) *androidpublisher.Fetcher {
 	t.Helper()
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	svc, err := androidpublisher.NewService(context.Background(),
+	svc, err := play.NewService(context.Background(),
 		option.WithEndpoint(srv.URL), option.WithoutAuthentication(), option.WithHTTPClient(srv.Client()))
 	require.NoError(t, err)
-	return google.NewAndroidPublisherFetcher(svc)
+	return androidpublisher.NewFetcher(svc)
 }
 
 func TestAndroidPublisherFetcher_GetV2(t *testing.T) {
+	t.Parallel()
 	var path string
 	f := newFetcher(t, func(w http.ResponseWriter, r *http.Request) {
 		path = r.URL.Path
@@ -54,7 +53,8 @@ func TestAndroidPublisherFetcher_GetV2(t *testing.T) {
 }
 
 func TestAndroidPublisherFetcher_APIError(t *testing.T) {
-	f := newFetcher(t, func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+	f := newFetcher(t, func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, `{"error":{"code":410,"message":"gone"}}`, http.StatusGone)
 	})
 
@@ -64,7 +64,8 @@ func TestAndroidPublisherFetcher_APIError(t *testing.T) {
 }
 
 func TestAndroidPublisherFetcher_BadExpiry(t *testing.T) {
-	f := newFetcher(t, func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+	f := newFetcher(t, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"subscriptionState":"SUBSCRIPTION_STATE_ACTIVE","lineItems":[{"expiryTime":"yesterday"}]}`))
 	})
 

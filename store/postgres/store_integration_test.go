@@ -16,9 +16,9 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/tggo/go-entitlements"
+	"github.com/tggo/go-entitlements/internal/testutil"
 	"github.com/tggo/go-entitlements/store/postgres"
 )
 
@@ -29,6 +29,7 @@ type StoreSuite struct {
 	db       *pgxpool.Pool
 	store    *postgres.Store
 	svc      *entitlements.Service
+	dsn      string
 	now      time.Time
 }
 
@@ -58,6 +59,7 @@ func (s *StoreSuite) SetupSuite() {
 	s.Require().NoError(s.resource.Expire(300))
 
 	dsn := fmt.Sprintf("postgres://test:secret@%s/entitlements?sslmode=disable", s.resource.GetHostPort("5432/tcp"))
+	s.dsn = dsn
 	s.Require().NoError(s.pool.Retry(func() error {
 		p, err := pgxpool.New(context.Background(), dsn)
 		if err != nil {
@@ -88,7 +90,7 @@ func (s *StoreSuite) TearDownSuite() {
 func (s *StoreSuite) SetupTest() {
 	s.now = time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 	s.svc = entitlements.NewService(s.store,
-		entitlements.WithLogger(zaptest.NewLogger(s.T())),
+		entitlements.WithLogger(testutil.NewLogger(s.T())),
 		entitlements.WithTimeFn(func() time.Time { return s.now }))
 }
 
@@ -388,11 +390,11 @@ func (s *StoreSuite) TestApplyFailsWhenTablesMissing() {
 
 func (s *StoreSuite) TestMigrateFailures() {
 	ctx := context.Background()
-	// a broken migration must fail and leave no schema_migrations row behind
+	// a broken migration must fail and leave no entitlements_schema_migrations row behind
 	err := s.store.MigrateFS(ctx, fstest.MapFS{"migrations/999_bad.sql": {Data: []byte("THIS IS NOT SQL")}})
 	s.Error(err)
 	var n int
-	s.Require().NoError(s.db.QueryRow(ctx, `SELECT count(*) FROM schema_migrations WHERE name = '999_bad.sql'`).Scan(&n))
+	s.Require().NoError(s.db.QueryRow(ctx, `SELECT count(*) FROM entitlements_schema_migrations WHERE name = '999_bad.sql'`).Scan(&n))
 	s.Equal(0, n)
 
 	// missing migrations dir
@@ -422,4 +424,90 @@ func (s *StoreSuite) TestSandboxRoundTrip() {
 	_, err = s.process(e2)
 	s.Require().NoError(err)
 	s.False(s.get("tx1").Sandbox)
+}
+
+func (s *StoreSuite) TestSupersedeUnseenOldChainLeavesTombstone() {
+	nw := s.ev("e-new", entitlements.StateActive, s.now)
+	nw.OriginalTxID, nw.SupersedesTxID = "txNew", "txGhost"
+	_, err := s.process(nw)
+	s.Require().NoError(err)
+
+	ghost := s.get("txGhost")
+	s.Equal(entitlements.StateExpired, ghost.State)
+
+	late := s.ev("e-late", entitlements.StateActive, s.now.Add(-time.Hour))
+	late.OriginalTxID = "txGhost"
+	_, err = s.process(late)
+	s.ErrorIs(err, entitlements.ErrStale)
+	s.Equal(entitlements.StateExpired, s.get("txGhost").State)
+}
+
+func (s *StoreSuite) TestDedupeIsPerSource() {
+	a := s.ev("same-id", entitlements.StateActive, s.now)
+	g := a
+	g.Source, g.OriginalTxID = entitlements.SourceGoogle, "tokG"
+	_, err := s.process(a)
+	s.Require().NoError(err)
+	_, err = s.process(g)
+	s.Require().NoError(err, "same ID from another source is not a duplicate")
+	_, err = s.process(a)
+	s.ErrorIs(err, entitlements.ErrDuplicate)
+}
+
+// With the database defaulting to SERIALIZABLE, Apply must still never
+// surface 40001: it pins READ COMMITTED itself.
+func (s *StoreSuite) TestApplyUnderSerializableDefault() {
+	ctx := context.Background()
+	cfg, err := pgxpool.ParseConfig(s.dsn)
+	s.Require().NoError(err)
+	cfg.ConnConfig.RuntimeParams["default_transaction_isolation"] = "serializable"
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	s.Require().NoError(err)
+	defer pool.Close()
+	var iso string
+	s.Require().NoError(pool.QueryRow(ctx, `SHOW default_transaction_isolation`).Scan(&iso))
+	s.Require().Equal("serializable", iso)
+
+	st := postgres.New(pool)
+	svc := entitlements.NewService(st)
+	const chains, perChain = 4, 8
+	var wg sync.WaitGroup
+	errs := make(chan error, chains*perChain)
+	for c := range chains {
+		for i := range perChain {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				e := s.ev(fmt.Sprintf("ser-%d-%d", c, i), entitlements.StateActive, s.now.Add(time.Duration(i)*time.Second))
+				e.OriginalTxID = fmt.Sprintf("serTx%d", c)
+				_, err := svc.Process(ctx, e)
+				errs <- err
+			}()
+		}
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil && !errors.Is(err, entitlements.ErrStale) {
+			s.Require().NoError(err)
+		}
+	}
+	for c := range chains {
+		s.NotNil(s.get(fmt.Sprintf("serTx%d", c)))
+	}
+}
+
+func (s *StoreSuite) TestPrune() {
+	old := s.ev("e-old", entitlements.StateActive, s.now.Add(-48*time.Hour))
+	old.OriginalTxID = "txOld"
+	_, err := s.process(old)
+	s.Require().NoError(err)
+	_, err = s.process(s.ev("e-new", entitlements.StateActive, s.now))
+	s.Require().NoError(err)
+
+	n, err := s.store.Prune(context.Background(), s.now.Add(-24*time.Hour))
+	s.Require().NoError(err)
+	s.Equal(int64(1), n)
+	s.Equal(1, s.count("processed_events"))
+	s.NotNil(s.get("txOld"), "entitlements are kept")
 }

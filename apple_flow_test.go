@@ -34,6 +34,7 @@ func permutations(n int) [][]int {
 // status change, expired) through parser+Service+memory store in every
 // delivery order and checks the end state is expired.
 func runChain(t *testing.T, parser *apple.Parser, bodies [][]byte) {
+	t.Helper()
 	for _, order := range permutations(len(bodies)) {
 		st := memory.New()
 		svc := newSvc(t, st)
@@ -76,7 +77,7 @@ func runChain(t *testing.T, parser *apple.Parser, bodies [][]byte) {
 
 func TestAppleChain_Synthetic_UserlessAllOrders(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
-	var bodies [][]byte
+	bodies := make([][]byte, 0, 3)
 	for i, name := range []string{"subscribed", "renewal_status_off", "expired"} {
 		f := testutil.LoadAppleFixture(t, name)
 		delete(f.Transaction, "appAccountToken")

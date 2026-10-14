@@ -53,8 +53,19 @@
 //
 // # Fetch errors
 //
-// Errors from the fetcher are wrapped with one class (the original error stays
+// Errors from the fetcher carry one class (the original error stays
 // reachable): ErrPurchaseNotFound for HTTP 404/410, ErrFetchConfig for 401/403,
-// ErrFetchTransient for everything else. httpx maps them to 200, 500 with a
-// loud log, and 500.
+// ErrFetchTransient for everything else. Package google/androidpublisher
+// classifies the Play API errors; the parser marks any unclassified fetcher
+// error, including a timeout, as transient. httpx maps the classes to 200,
+// 500 with a loud log, and 500. Each fetch is bounded by WithFetchTimeout.
+//
+// # Dependencies
+//
+// This package does not import the Google API client. Use
+// google/androidpublisher for the real fetcher.
+//
+// # Concurrency
+//
+// Parser is safe for concurrent use as long as the fetcher is.
 package google

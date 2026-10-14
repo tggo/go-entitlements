@@ -32,7 +32,7 @@ func TestNilVerifierParserFails(t *testing.T) {
 func TestInsecureAnyBundle_AcceptsForeignApp(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	body := appleBodyMut(t, ca, "subscribed", func(f *testutil.AppleFixture) {
-		f.Notification["data"].(map[string]any)["bundleId"] = "com.foreign"
+		dataOf(f)["bundleId"] = "com.foreign"
 		f.Transaction["bundleId"] = "com.foreign"
 	})
 	v, err := apple.NewVerifier("", apple.WithRootPool(ca.Pool), apple.WithInsecureAnyBundle())
@@ -59,25 +59,25 @@ func TestNestedIdentityChecks(t *testing.T) {
 		mut    func(f *testutil.AppleFixture)
 		wantOK bool
 	}{
-		{"control", nil, func(f *testutil.AppleFixture) {}, true},
+		{"control", nil, func(*testutil.AppleFixture) {}, true},
 		{"nested transaction bundle mismatch", nil, func(f *testutil.AppleFixture) { f.Transaction["bundleId"] = "com.other" }, false},
 		{"nested transaction bundle empty", nil, func(f *testutil.AppleFixture) { delete(f.Transaction, "bundleId") }, false},
 		{"nested renewal environment differs from outer", nil, func(f *testutil.AppleFixture) { f.Renewal["environment"] = "Sandbox" }, false},
 		{"nested transaction sandbox inside production", nil, func(f *testutil.AppleFixture) { f.Transaction["environment"] = "Sandbox" }, false},
 		{"outer bundle mismatch", nil, func(f *testutil.AppleFixture) {
-			f.Notification["data"].(map[string]any)["bundleId"] = "com.other"
+			dataOf(f)["bundleId"] = "com.other"
 		}, false},
 		{"outer sandbox with production pin", []apple.Option{apple.WithEnvironment("Production")}, func(f *testutil.AppleFixture) {
-			f.Notification["data"].(map[string]any)["environment"] = "Sandbox"
+			dataOf(f)["environment"] = "Sandbox"
 			f.Transaction["environment"] = "Sandbox"
 			f.Renewal["environment"] = "Sandbox"
 		}, false},
 		{"sandbox accepted without pin", nil, func(f *testutil.AppleFixture) {
-			f.Notification["data"].(map[string]any)["environment"] = "Sandbox"
+			dataOf(f)["environment"] = "Sandbox"
 			f.Transaction["environment"] = "Sandbox"
 			f.Renewal["environment"] = "Sandbox"
 		}, true},
-		{"production pin, production payload", []apple.Option{apple.WithEnvironment("Production")}, func(f *testutil.AppleFixture) {}, true},
+		{"production pin, production payload", []apple.Option{apple.WithEnvironment("Production")}, func(*testutil.AppleFixture) {}, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestNestedIdentityChecks(t *testing.T) {
 
 func TestEventCarriesEnvironment(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
-	ev, err := parserFor(ca).Parse(appleBodyMut(t, ca, "subscribed", func(f *testutil.AppleFixture) {}))
+	ev, err := parserFor(ca).Parse(appleBodyMut(t, ca, "subscribed", func(*testutil.AppleFixture) {}))
 	require.NoError(t, err)
 	assert.Equal(t, "Production", ev.Environment)
 }
@@ -137,11 +137,19 @@ func TestEventSandboxFlag(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	for env, want := range map[string]bool{"Production": false, "Sandbox": true} {
 		ev, err := parserFor(ca).Parse(appleBodyMut(t, ca, "subscribed", func(f *testutil.AppleFixture) {
-			f.Notification["data"].(map[string]any)["environment"] = env
+			dataOf(f)["environment"] = env
 			f.Transaction["environment"] = env
 			f.Renewal["environment"] = env
 		}))
 		require.NoError(t, err)
 		assert.Equal(t, want, ev.Sandbox, env)
 	}
+}
+
+func dataOf(f *testutil.AppleFixture) map[string]any {
+	d, ok := f.Notification["data"].(map[string]any)
+	if !ok {
+		panic("fixture has no data object")
+	}
+	return d
 }

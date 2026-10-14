@@ -1,9 +1,10 @@
 package apple_test
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -102,7 +103,7 @@ func TestParser_MissingTransactionData(t *testing.T) {
 	f.Transaction = nil
 	_, err := p.Parse(f.SignBody(t, ca))
 	require.Error(t, err)
-	assert.False(t, errors.Is(err, entitlements.ErrInvalidSignature))
+	assert.NotErrorIs(t, err, entitlements.ErrInvalidSignature)
 
 }
 
@@ -188,6 +189,7 @@ func TestVerifier_Rejections(t *testing.T) {
 }
 
 func brokenCA(t *testing.T, name string) *testutil.AppleCA {
+	t.Helper()
 	switch name {
 	case "leaf lacks OID":
 		return testutil.NewAppleCA(t, testutil.AppleCAOptions{OmitLeafOID: true})
@@ -213,7 +215,7 @@ func TestVerifier_NotificationBadBody(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := p.Parse([]byte(b))
 			require.Error(t, err)
-			assert.False(t, errors.Is(err, entitlements.ErrInvalidSignature))
+			assert.NotErrorIs(t, err, entitlements.ErrInvalidSignature)
 		})
 	}
 }
@@ -262,7 +264,7 @@ func TestVerify_BadPayloadJSON(t *testing.T) {
 	var out apple.NotificationPayload
 	err := mustV(t, ca).Verify(jws, &out)
 	require.Error(t, err)
-	assert.False(t, errors.Is(err, entitlements.ErrInvalidSignature))
+	assert.NotErrorIs(t, err, entitlements.ErrInvalidSignature)
 }
 
 func TestVerify_WrongKeyType(t *testing.T) {
@@ -278,11 +280,42 @@ func TestVerify_WrongKeyType(t *testing.T) {
 }
 
 func TestEmbeddedRootCA(t *testing.T) {
-	pool := apple.AppleRootCAG3Pool()
+	pool := apple.RootCAG3Pool()
 	require.NotNil(t, pool)
-	subjects := pool.Subjects() //nolint:staticcheck // only way to inspect a pool
-	require.Len(t, subjects, 1)
-	assert.Contains(t, string(subjects[0]), "Apple Root CA - G3")
+	der, err := os.ReadFile("AppleRootCA-G3.cer")
+	require.NoError(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+	assert.Equal(t, "Apple Root CA - G3", cert.Subject.CommonName)
+	want := x509.NewCertPool()
+	want.AddCert(cert)
+	assert.True(t, pool.Equal(want))
+}
+
+func TestRootCAG3Pool_ReturnsIndependentCopies(t *testing.T) {
+	a := apple.RootCAG3Pool()
+	a.AddCert(testutil.NewAppleCA(t).Root) // caller mutates its copy
+	b := apple.RootCAG3Pool()
+	assert.False(t, a.Equal(b))
+	assert.True(t, b.Equal(apple.RootCAG3Pool()), "the shared pool is untouched")
+}
+
+func TestNilOptionsKeepDefaults(t *testing.T) {
+	ca := testutil.NewAppleCA(t)
+	v, err := apple.NewVerifier("com.example.app", nil, apple.WithTimeFn(nil), apple.WithRootPool(nil))
+	require.NoError(t, err)
+	// default roots are Apple's, so a test-CA chain is rejected rather than panicking
+	_, err = apple.NewParser(v).Parse(testutil.LoadAppleFixture(t, "subscribed").SignBody(t, ca))
+	assert.ErrorIs(t, err, entitlements.ErrInvalidSignature)
+}
+
+func TestVerify_X5CCountCapped(t *testing.T) {
+	ca := testutil.NewAppleCA(t)
+	der := ca.Leaf.Raw
+	jws := testutil.SignChain(t, ca.LeafKey, [][]byte{der, der, der, der, der, der}, map[string]string{})
+	err := mustV(t, ca).Verify(jws, &struct{}{})
+	require.ErrorIs(t, err, entitlements.ErrInvalidSignature)
+	assert.Contains(t, err.Error(), "at most")
 }
 
 func base64RawURL(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

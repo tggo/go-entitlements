@@ -23,6 +23,10 @@ import (
 //go:embed AppleRootCA-G3.cer
 var appleRootCAG3DER []byte
 
+// maxX5C bounds how many certificates of an untrusted header are parsed.
+// Apple sends three (leaf, intermediate, root).
+const maxX5C = 5
+
 var (
 	// Apple's receipt-signing marker extensions.
 	oidLeaf         = asn1.ObjectIdentifier{1, 2, 840, 113635, 100, 6, 11, 1}
@@ -32,9 +36,11 @@ var (
 	defaultPool     *x509.CertPool
 )
 
-// AppleRootCAG3Pool returns a pool containing only the embedded
-// "Apple Root CA - G3" certificate.
-func AppleRootCAG3Pool() *x509.CertPool {
+// RootCAG3Pool returns a new pool containing only the embedded
+// "Apple Root CA - G3" certificate. Each call returns an independent copy, so
+// callers may add certificates to it. It panics if the embedded certificate is
+// corrupt, which the tests rule out.
+func RootCAG3Pool() *x509.CertPool {
 	defaultPoolOnce.Do(func() {
 		cert, err := x509.ParseCertificate(appleRootCAG3DER)
 		if err != nil {
@@ -43,7 +49,7 @@ func AppleRootCAG3Pool() *x509.CertPool {
 		defaultPool = x509.NewCertPool()
 		defaultPool.AddCert(cert)
 	})
-	return defaultPool
+	return defaultPool.Clone()
 }
 
 // Verifier verifies Apple-signed JWS values (ES256 with an x5c chain) and
@@ -60,14 +66,29 @@ type Verifier struct {
 type Option func(*Verifier)
 
 // WithRootPool replaces the trusted roots (default: embedded Apple Root CA - G3).
-func WithRootPool(p *x509.CertPool) Option { return func(v *Verifier) { v.roots = p } }
+// The Verifier keeps p without copying it: do not modify p afterwards
+// (x509.CertPool is not safe for concurrent mutation). A nil pool keeps the default.
+func WithRootPool(p *x509.CertPool) Option {
+	return func(v *Verifier) {
+		if p != nil {
+			v.roots = p
+		}
+	}
+}
 
 // WithTimeFn sets the clock used to check certificate validity (default
 // time.Now). Apple's leaf certificates are short-lived, so verifying an old
 // notification later (e.g. replaying stored payloads) may need a clock pinned
 // to the notification's signedDate; the library does not do that implicitly
 // because signedDate is attacker-controlled until the signature is checked.
-func WithTimeFn(fn func() time.Time) Option { return func(v *Verifier) { v.timeFn = fn } }
+// A nil fn keeps time.Now.
+func WithTimeFn(fn func() time.Time) Option {
+	return func(v *Verifier) {
+		if fn != nil {
+			v.timeFn = fn
+		}
+	}
+}
 
 // WithEnvironment rejects notifications (outer and nested) whose environment
 // differs: "Production" or "Sandbox". Without it both are accepted, nested
@@ -88,13 +109,15 @@ func WithInsecureAnyBundle() Option { return func(v *Verifier) { v.anyBundle = t
 func NewVerifier(bundleID string, opts ...Option) (*Verifier, error) {
 	v := &Verifier{bundleID: bundleID}
 	for _, o := range opts {
-		o(v)
+		if o != nil {
+			o(v)
+		}
 	}
 	if v.bundleID == "" && !v.anyBundle {
 		return nil, errors.New("apple: bundle ID is required (use WithInsecureAnyBundle to skip the check)")
 	}
 	if v.roots == nil {
-		v.roots = AppleRootCAG3Pool()
+		v.roots = RootCAG3Pool()
 	}
 	if v.timeFn == nil {
 		v.timeFn = time.Now
@@ -124,7 +147,7 @@ func (v *Verifier) Verify(token string, out any) error {
 		return invalid("header encoding: %v", err)
 	}
 	var hdr jwsHeader
-	if err := json.Unmarshal(hdrRaw, &hdr); err != nil {
+	if err = json.Unmarshal(hdrRaw, &hdr); err != nil {
 		return invalid("header json: %v", err)
 	}
 	if hdr.Alg != "ES256" {
@@ -133,11 +156,14 @@ func (v *Verifier) Verify(token string, out any) error {
 	if len(hdr.X5C) < 2 {
 		return invalid("x5c must contain leaf and intermediate, got %d certs", len(hdr.X5C))
 	}
+	if len(hdr.X5C) > maxX5C {
+		return invalid("x5c has %d certs, at most %d allowed", len(hdr.X5C), maxX5C)
+	}
 	certs := make([]*x509.Certificate, len(hdr.X5C))
 	for i, s := range hdr.X5C {
-		der, err := base64.StdEncoding.DecodeString(s)
-		if err != nil {
-			return invalid("x5c[%d] encoding: %v", i, err)
+		der, derr := base64.StdEncoding.DecodeString(s)
+		if derr != nil {
+			return invalid("x5c[%d] encoding: %v", i, derr)
 		}
 		if certs[i], err = x509.ParseCertificate(der); err != nil {
 			return invalid("x5c[%d] parse: %v", i, err)
@@ -154,7 +180,7 @@ func (v *Verifier) Verify(token string, out any) error {
 	for _, c := range certs[1:] {
 		inters.AddCert(c)
 	}
-	if _, err := leaf.Verify(x509.VerifyOptions{
+	if _, err = leaf.Verify(x509.VerifyOptions{
 		Roots:         v.roots,
 		Intermediates: inters,
 		CurrentTime:   v.timeFn(),

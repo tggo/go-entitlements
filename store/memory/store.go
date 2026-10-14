@@ -15,10 +15,11 @@ type key struct {
 	txID   string
 }
 
-// Store keeps everything in maps behind one mutex.
+// Store keeps everything in maps behind one mutex. It is safe for concurrent
+// use; fn runs under the mutex and must not call back into the Store.
 //
 // Apply semantics (shared with the Postgres store): a duplicate event ID
-// returns ErrDuplicate without calling fn; if fn returns ErrStale, ErrIgnored
+// (per source) returns ErrDuplicate without calling fn; if fn returns ErrStale, ErrIgnored
 // or ErrUnsupported the event is recorded as processed (not applied) and the
 // error is returned with the current entitlement; any other fn error leaves
 // no trace so the event can be retried; fn returning (nil, nil) records the
@@ -26,14 +27,14 @@ type key struct {
 type Store struct {
 	mu        sync.Mutex
 	items     map[key]entitlements.Entitlement
-	processed map[string]struct{}
+	processed map[key]struct{} // keyed by (source, event ID); grows unbounded, fine for tests and demos
 }
 
 // New returns an empty Store.
 func New() *Store {
 	return &Store{
 		items:     map[key]entitlements.Entitlement{},
-		processed: map[string]struct{}{},
+		processed: map[key]struct{}{},
 	}
 }
 
@@ -53,7 +54,8 @@ func (s *Store) Apply(ctx context.Context, ev entitlements.Event, fn func(cur *e
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, dup := s.processed[ev.ID]; dup {
+	pk := key{ev.Source, ev.ID}
+	if _, dup := s.processed[pk]; dup {
 		return nil, entitlements.ErrDuplicate
 	}
 	k := key{ev.Source, ev.OriginalTxID}
@@ -65,11 +67,11 @@ func (s *Store) Apply(ctx context.Context, ev entitlements.Event, fn func(cur *e
 	next, err := fn(cur)
 	if err != nil {
 		if recordable(err) {
-			s.processed[ev.ID] = struct{}{}
+			s.processed[pk] = struct{}{}
 		}
 		return cur, err
 	}
-	s.processed[ev.ID] = struct{}{}
+	s.processed[pk] = struct{}{}
 	if next == nil {
 		return cur, nil
 	}
@@ -79,7 +81,7 @@ func (s *Store) Apply(ctx context.Context, ev entitlements.Event, fn func(cur *e
 }
 
 // Get implements entitlements.Store.
-func (s *Store) Get(ctx context.Context, source entitlements.Source, originalTxID string) (*entitlements.Entitlement, error) {
+func (s *Store) Get(_ context.Context, source entitlements.Source, originalTxID string) (*entitlements.Entitlement, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.items[key{source, originalTxID}]
@@ -91,7 +93,7 @@ func (s *Store) Get(ctx context.Context, source entitlements.Source, originalTxI
 
 // ListByUser implements entitlements.Store. Results are ordered by
 // (Source, OriginalTxID) for determinism.
-func (s *Store) ListByUser(ctx context.Context, userID string) ([]entitlements.Entitlement, error) {
+func (s *Store) ListByUser(_ context.Context, userID string) ([]entitlements.Entitlement, error) {
 	if userID == "" {
 		return nil, nil // userless entitlements (no appAccountToken) are not one user's
 	}

@@ -18,6 +18,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,26 +26,26 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
-	"google.golang.org/api/androidpublisher/v3"
+	play "google.golang.org/api/androidpublisher/v3"
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/apple"
 	"github.com/tggo/go-entitlements/google"
+	"github.com/tggo/go-entitlements/google/androidpublisher"
 	"github.com/tggo/go-entitlements/httpx"
+	"github.com/tggo/go-entitlements/httpx/pubsubauth"
 	"github.com/tggo/go-entitlements/store/postgres"
 )
 
 func main() {
-	log, _ := zap.NewProduction()
-	err := run(log)
-	_ = log.Sync()
-	if err != nil {
-		log.Fatal("server failed", zap.Error(err))
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	if err := run(log); err != nil {
+		log.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }
 
-func run(log *zap.Logger) error {
+func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -59,22 +60,22 @@ func run(log *zap.Logger) error {
 	}
 	defer pool.Close()
 	store := postgres.New(pool)
-	if err := store.Migrate(ctx); err != nil {
+	if err = store.Migrate(ctx); err != nil {
 		return err
 	}
 	svc := entitlements.NewService(store, entitlements.WithLogger(log))
 
 	var verifierOpts []apple.Option
 	if path := os.Getenv("APPLE_ROOT_CA_PEM"); path != "" {
-		pemBytes, err := os.ReadFile(path)
-		if err != nil {
-			return err
+		pemBytes, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return rerr
 		}
 		roots := x509.NewCertPool()
 		if !roots.AppendCertsFromPEM(pemBytes) {
 			return errors.New("APPLE_ROOT_CA_PEM: no certificate found")
 		}
-		log.Warn("APPLE_ROOT_CA_PEM set: Apple's root CA is NOT trusted. Local demo only.", zap.String("path", path))
+		log.Warn("APPLE_ROOT_CA_PEM set: Apple's root CA is NOT trusted. Local demo only.", "path", path)
 		verifierOpts = append(verifierOpts, apple.WithRootPool(roots))
 	}
 
@@ -86,14 +87,21 @@ func run(log *zap.Logger) error {
 	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(appleVerifier), svc, log))
 
 	if pkg := os.Getenv("GOOGLE_PACKAGE_NAME"); pkg != "" {
-		play, err := androidpublisher.NewService(ctx) // honours GOOGLE_APPLICATION_CREDENTIALS
+		svcPlay, err := play.NewService(ctx) // honours GOOGLE_APPLICATION_CREDENTIALS
 		if err != nil {
 			return err
 		}
-		parser := google.NewParser(google.NewAndroidPublisherFetcher(play), google.WithPackageName(pkg))
+		parser, err := google.NewParser(androidpublisher.NewFetcher(svcPlay), google.WithPackageName(pkg))
+		if err != nil {
+			return err
+		}
 		var opts []httpx.Option
 		if aud, sa := os.Getenv("GOOGLE_PUSH_AUDIENCE"), os.Getenv("GOOGLE_PUSH_SERVICE_ACCOUNT"); aud != "" && sa != "" {
-			opts = append(opts, httpx.WithPushAuthenticator(httpx.NewPubSubAuthenticator(aud, sa)))
+			auth, err := pubsubauth.New(aud, sa)
+			if err != nil {
+				return err
+			}
+			opts = append(opts, httpx.WithPushAuthenticator(auth))
 		} else {
 			log.Warn("Pub/Sub push authentication is off: set GOOGLE_PUSH_AUDIENCE and GOOGLE_PUSH_SERVICE_ACCOUNT")
 		}
@@ -108,7 +116,7 @@ func run(log *zap.Logger) error {
 		}
 		list, err := store.ListByUser(r.Context(), userID)
 		if err != nil {
-			log.Error("list entitlements", zap.Error(err))
+			log.ErrorContext(r.Context(), "list entitlements", "error", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -136,11 +144,11 @@ func run(log *zap.Logger) error {
 	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	log.Info("listening", zap.String("addr", addr))
+	log.Info("listening", "addr", addr)
 	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

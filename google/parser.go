@@ -1,14 +1,12 @@
 package google
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
-
-	"google.golang.org/api/googleapi"
 
 	"github.com/tggo/go-entitlements"
 )
@@ -27,14 +25,14 @@ var (
 	// WithRejectTestPurchases is set (it wraps entitlements.ErrIgnored).
 	ErrTestPurchase = fmt.Errorf("google: test purchase: %w", entitlements.ErrIgnored)
 
-	// ErrPurchaseNotFound: subscriptionsv2.get answered 404 or 410. The token is
+	// ErrPurchaseNotFound means subscriptionsv2.get answered 404 or 410. The token is
 	// unknown or too old; redelivery cannot fix it, so acknowledge (HTTP 200).
 	ErrPurchaseNotFound = errors.New("google: purchase token not found or expired")
-	// ErrFetchConfig: the Play API answered 401 or 403. The service account or
+	// ErrFetchConfig means the Play API answered 401 or 403. The service account or
 	// its Play Console permissions are misconfigured; retry will not help until
 	// an operator fixes it. Answer 500 and log loudly.
 	ErrFetchConfig = errors.New("google: play api credentials or permissions rejected")
-	// ErrFetchTransient: 5xx, 429, timeouts and transport failures. Answer 500
+	// ErrFetchTransient means 5xx, 429, timeouts and transport failures. Answer 500
 	// so Pub/Sub redelivers.
 	ErrFetchTransient = errors.New("google: play api transient failure")
 )
@@ -44,12 +42,17 @@ var (
 // Play Console default for the grace period.
 const DefaultGraceDuration = 7 * 24 * time.Hour
 
-// Parser turns RTDN Pub/Sub push bodies into entitlements.Event.
+// DefaultFetchTimeout bounds one subscriptionsv2.get call.
+const DefaultFetchTimeout = 15 * time.Second
+
+// Parser turns RTDN Pub/Sub push bodies into entitlements.Event. It is safe
+// for concurrent use.
 type Parser struct {
 	fetcher     SubscriptionsFetcher
 	packageName string
 	rejectTests bool
 	grace       time.Duration
+	fetchTO     time.Duration
 }
 
 // Option configures a Parser.
@@ -74,13 +77,29 @@ func WithGraceDuration(d time.Duration) Option {
 	return func(p *Parser) { p.grace = d }
 }
 
-// NewParser builds a Parser. fetcher is used for subscription notifications.
-func NewParser(fetcher SubscriptionsFetcher, opts ...Option) *Parser {
-	p := &Parser{fetcher: fetcher, grace: DefaultGraceDuration}
-	for _, o := range opts {
-		o(p)
+// WithFetchTimeout bounds each subscriptionsv2.get call (default
+// DefaultFetchTimeout). Non-positive values keep the default.
+func WithFetchTimeout(d time.Duration) Option {
+	return func(p *Parser) {
+		if d > 0 {
+			p.fetchTO = d
+		}
 	}
-	return p
+}
+
+// NewParser builds a Parser. fetcher is used for subscription notifications
+// and must not be nil. Nil options are ignored.
+func NewParser(fetcher SubscriptionsFetcher, opts ...Option) (*Parser, error) {
+	if fetcher == nil {
+		return nil, errors.New("google: NewParser: fetcher is nil")
+	}
+	p := &Parser{fetcher: fetcher, grace: DefaultGraceDuration, fetchTO: DefaultFetchTimeout}
+	for _, o := range opts {
+		if o != nil {
+			o(p)
+		}
+	}
+	return p, nil
 }
 
 // Parse decodes a Pub/Sub push body and maps it to an Event. It returns
@@ -106,7 +125,7 @@ func (p *Parser) Parse(ctx context.Context, body []byte) (entitlements.Event, er
 		ID:         env.Message.MessageID,
 		Source:     entitlements.SourceGoogle,
 		OccurredAt: dn.EventTimeMillis.Time(),
-		Raw:        body,
+		Raw:        bytes.Clone(body),
 	}
 
 	switch {
@@ -140,6 +159,9 @@ func fromVoided(ev entitlements.Event, v *VoidedPurchaseNotification) (entitleme
 	if v.RefundType == refundTypePartialByQty {
 		return entitlements.Event{}, fmt.Errorf("%w: quantity-based partial refund", entitlements.ErrIgnored)
 	}
+	if v.PurchaseToken == "" {
+		return entitlements.Event{}, fmt.Errorf("%w: voided notification without purchaseToken", ErrMalformed)
+	}
 	ev.OriginalTxID = v.PurchaseToken
 	ev.State = entitlements.StateRefunded
 	return ev, nil
@@ -150,7 +172,9 @@ func (p *Parser) fromSubscription(ctx context.Context, ev entitlements.Event, dn
 	if sn.PurchaseToken == "" {
 		return entitlements.Event{}, fmt.Errorf("%w: empty purchaseToken", ErrMalformed)
 	}
-	sub, err := p.fetcher.GetV2(ctx, dn.PackageName, sn.PurchaseToken)
+	fctx, cancel := context.WithTimeout(ctx, p.fetchTO)
+	defer cancel()
+	sub, err := p.fetcher.GetV2(fctx, dn.PackageName, sn.PurchaseToken)
 	if err != nil {
 		return entitlements.Event{}, classifyFetchError(err)
 	}
@@ -175,26 +199,7 @@ func (p *Parser) fromSubscription(ctx context.Context, ev entitlements.Event, dn
 			ev.UserID = ids.ObfuscatedExternalProfileID
 		}
 	}
-	// Latest expiry wins; its product is reported. Items without expiryTime
-	// (a deferred replacement that has not taken effect yet) never win.
-	var best *LineItem
-	for i := range sub.LineItems {
-		li := &sub.LineItems[i]
-		if li.ExpiryTime.IsZero() {
-			continue
-		}
-		if best == nil || li.ExpiryTime.After(best.ExpiryTime) {
-			best = li
-		}
-	}
-	if best != nil {
-		ev.ExpiresAt = best.ExpiryTime
-		if best.ProductID != "" {
-			ev.ProductID = best.ProductID
-		}
-	} else if len(sub.LineItems) > 0 && sub.LineItems[0].ProductID != "" {
-		ev.ProductID = sub.LineItems[0].ProductID
-	}
+	applyLineItems(&ev, sub.LineItems)
 
 	switch state {
 	case entitlements.StateGrace:
@@ -211,24 +216,48 @@ func (p *Parser) fromSubscription(ctx context.Context, ev entitlements.Event, dn
 		if ev.ExpiresAt.IsZero() {
 			return entitlements.Event{}, ErrNoExpiry
 		}
+	default:
+		// Other states do not grant access; no expiry needed.
 	}
 	ev.Sandbox = sub.TestPurchase
 	return ev, nil
 }
 
-// classifyFetchError tags a subscriptionsv2.get failure so the HTTP layer can
-// pick a status; the original error stays reachable through errors.Is/As.
-func classifyFetchError(err error) error {
-	var apiErr *googleapi.Error
-	if errors.As(err, &apiErr) {
-		switch apiErr.Code {
-		case http.StatusNotFound, http.StatusGone:
-			return fmt.Errorf("%w: %w", ErrPurchaseNotFound, err)
-		case http.StatusUnauthorized, http.StatusForbidden:
-			return fmt.Errorf("%w: %w", ErrFetchConfig, err)
+// applyLineItems sets ProductID and ExpiresAt from the line item with the
+// latest expiry. Items without expiryTime (a deferred replacement that has not
+// taken effect yet) never win; if none has one, ProductID falls back to the
+// first item.
+func applyLineItems(ev *entitlements.Event, items []LineItem) {
+	var best *LineItem
+	for i := range items {
+		li := &items[i]
+		if li.ExpiryTime.IsZero() {
+			continue
+		}
+		if best == nil || li.ExpiryTime.After(best.ExpiryTime) {
+			best = li
 		}
 	}
-	return fmt.Errorf("%w: %w", ErrFetchTransient, err)
+	switch {
+	case best != nil:
+		ev.ExpiresAt = best.ExpiryTime
+		if best.ProductID != "" {
+			ev.ProductID = best.ProductID
+		}
+	case len(items) > 0 && items[0].ProductID != "":
+		ev.ProductID = items[0].ProductID
+	}
+}
+
+// classifyFetchError makes sure a fetch failure carries one of the three
+// classes. A fetcher (see package androidpublisher) normally classifies
+// itself; anything unclassified, including timeouts, is transient. The
+// original error stays reachable through errors.Is/As.
+func classifyFetchError(err error) error {
+	if errors.Is(err, ErrPurchaseNotFound) || errors.Is(err, ErrFetchConfig) || errors.Is(err, ErrFetchTransient) {
+		return fmt.Errorf("google: fetch subscription: %w", err)
+	}
+	return fmt.Errorf("google: fetch subscription: %w: %w", ErrFetchTransient, err)
 }
 
 func mapState(s string) (entitlements.State, error) {

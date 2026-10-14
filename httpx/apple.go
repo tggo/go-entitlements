@@ -2,9 +2,8 @@ package httpx
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
-
-	"go.uber.org/zap"
 
 	"github.com/tggo/go-entitlements"
 )
@@ -18,7 +17,7 @@ type AppleParser interface {
 type appleHandler struct {
 	parser AppleParser
 	svc    Processor
-	log    *zap.Logger
+	log    *slog.Logger
 	cfg    config
 }
 
@@ -26,11 +25,11 @@ type appleHandler struct {
 // endpoint. Parsing Apple notifications involves no I/O, so any parse error
 // other than TEST/unsupported types is permanent: 401 for a failed signature,
 // 400 for anything else.
-func NewAppleHandler(parser AppleParser, svc Processor, logger *zap.Logger, opts ...Option) http.Handler {
+func NewAppleHandler(parser AppleParser, svc Processor, logger *slog.Logger, opts ...Option) http.Handler {
 	if logger == nil {
-		logger = zap.NewNop()
+		logger = slog.New(slog.DiscardHandler)
 	}
-	return &appleHandler{parser: parser, svc: svc, log: logger.With(zap.String("handler", "apple")), cfg: newConfig(opts)}
+	return &appleHandler{parser: parser, svc: svc, log: logger.With("handler", "apple"), cfg: newConfig(opts)}
 }
 
 func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -43,13 +42,13 @@ func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		process(w, r, h.svc, ev, h.log)
 	case errors.Is(err, entitlements.ErrIgnored), errors.Is(err, entitlements.ErrUnsupported):
-		h.log.Warn("notification not applicable", zap.Error(err))
+		h.log.Warn("notification not applicable", "error", err)
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, entitlements.ErrInvalidSignature):
-		h.log.Error("rejected notification: invalid signature", zap.Error(err), zap.String("remote", r.RemoteAddr))
+		h.log.Error("rejected notification: invalid signature", "error", err, "remote", r.RemoteAddr)
 		http.Error(w, "invalid signature", http.StatusUnauthorized)
 	default:
-		h.log.Error("rejected notification: malformed", zap.Error(err), zap.String("remote", r.RemoteAddr))
+		h.log.Error("rejected notification: malformed", "error", err, "remote", r.RemoteAddr)
 		http.Error(w, "bad request", http.StatusBadRequest)
 	}
 }

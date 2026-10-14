@@ -19,7 +19,6 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/apple"
@@ -104,7 +103,7 @@ func (s *E2ESuite) TearDownSuite() {
 }
 
 func (s *E2ESuite) SetupTest() {
-	log := zaptest.NewLogger(s.T())
+	log := testutil.NewLogger(s.T())
 	s.base = time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 	s.ca = testutil.NewAppleCA(s.T())
 	s.fetcher = googlemocks.NewMockSubscriptionsFetcher(s.T())
@@ -113,7 +112,8 @@ func (s *E2ESuite) SetupTest() {
 	appleVerifier, err := apple.NewVerifier(appleBundle, apple.WithRootPool(s.ca.Pool))
 	s.Require().NoError(err)
 	appleParser := apple.NewParser(appleVerifier)
-	googleParser := google.NewParser(s.fetcher, google.WithPackageName(googlePkg))
+	googleParser, err := google.NewParser(s.fetcher, google.WithPackageName(googlePkg))
+	s.Require().NoError(err)
 
 	mux := http.NewServeMux()
 	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(appleParser, svc, log))
