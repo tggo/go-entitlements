@@ -12,8 +12,7 @@ import (
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
-	"github.com/tggo/go-entitlements/httpx"
-	"github.com/tggo/go-entitlements/httpx/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/httpx"
 )
 
 func TestProcessorReturningNilNil(t *testing.T) {
@@ -23,7 +22,7 @@ func TestProcessorReturningNilNil(t *testing.T) {
 	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(ev, nil)
 	svc := mocks.NewMockProcessor(t)
 	svc.EXPECT().Process(mock.Anything, ev).Return(nil, nil)
-	h := httpx.NewGoogleHandler(parser, svc, testLogger(t))
+	h := mustGoogle(t, parser, svc, testLogger(t))
 
 	assert.NotPanics(t, func() { assert.Equal(t, http.StatusOK, post(h, "body").Code) })
 }
@@ -36,7 +35,7 @@ func TestInvalidEventIsAcknowledgedLoudly(t *testing.T) {
 	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(ev, nil)
 	svc := mocks.NewMockProcessor(t)
 	svc.EXPECT().Process(mock.Anything, ev).Return(nil, fmt.Errorf("w: %w", entitlements.ErrInvalidEvent))
-	h := httpx.NewGoogleHandler(parser, svc, log)
+	h := mustGoogle(t, parser, svc, log)
 
 	assert.Equal(t, http.StatusOK, post(h, "body").Code)
 
@@ -52,7 +51,7 @@ func TestNoExpiryIsLoud(t *testing.T) {
 	log, logs := newRecorder()
 	parser := mocks.NewMockGoogleParser(t)
 	parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(entitlements.Event{}, fmt.Errorf("w: %w", google.ErrNoExpiry))
-	h := httpx.NewGoogleHandler(parser, mocks.NewMockProcessor(t), log)
+	h := mustGoogle(t, parser, mocks.NewMockProcessor(t), log)
 
 	assert.Equal(t, http.StatusOK, post(h, "body").Code)
 
@@ -67,7 +66,7 @@ func TestNilLoggerAndNilOptionAreSafe(t *testing.T) {
 	t.Parallel()
 	parser := mocks.NewMockGoogleParser(t)
 	parser.EXPECT().Parse(mock.Anything, mock.Anything).Return(entitlements.Event{}, errors.New("boom"))
-	h := httpx.NewGoogleHandler(parser, mocks.NewMockProcessor(t), nil, nil, httpx.WithPushAuthenticator(nil))
+	h := mustGoogle(t, parser, mocks.NewMockProcessor(t), nil)
 
 	assert.Equal(t, http.StatusInternalServerError, post(h, "body").Code)
 }

@@ -37,8 +37,10 @@ type Processor interface {
 }
 
 type config struct {
-	maxBody int64
-	auth    func(*http.Request) error
+	maxBody  int64
+	auth     func(*http.Request) error
+	log      *slog.Logger
+	insecure bool
 }
 
 // Option configures a handler.
@@ -55,8 +57,26 @@ func WithPushAuthenticator(fn func(*http.Request) error) Option {
 	return func(c *config) { c.auth = fn }
 }
 
+// WithLogger sets the logger (default: discard). A nil logger keeps the
+// default.
+func WithLogger(l *slog.Logger) Option {
+	return func(c *config) {
+		if l != nil {
+			c.log = l
+		}
+	}
+}
+
+// WithInsecureNoAuth lets NewGoogleHandler run without a push authenticator.
+// Without authentication anyone who knows the endpoint can submit
+// notifications: they cost Play API quota, create rows, and can feed the
+// state machine forged data. Use it only for local demos or when something
+// in front of the handler (a gateway that validates the Pub/Sub token)
+// already authenticates the push. It logs an error when the handler is built.
+func WithInsecureNoAuth() Option { return func(c *config) { c.insecure = true } }
+
 func newConfig(opts []Option) config {
-	c := config{maxBody: DefaultMaxBodyBytes}
+	c := config{maxBody: DefaultMaxBodyBytes, log: slog.New(slog.DiscardHandler)}
 	for _, o := range opts {
 		if o != nil {
 			o(&c)
@@ -88,7 +108,8 @@ func readBody(w http.ResponseWriter, r *http.Request, limit int64, log *slog.Log
 	return body, true
 }
 
-// process runs ev through p and answers per the response policy.
+// process runs ev through p, logs the outcome once, and answers per the
+// response policy.
 func process(w http.ResponseWriter, r *http.Request, p Processor, ev entitlements.Event, log *slog.Logger) {
 	ent, err := p.Process(r.Context(), ev)
 	log = log.With("event", ev.ID, "source", string(ev.Source))
@@ -103,7 +124,9 @@ func process(w http.ResponseWriter, r *http.Request, p Processor, ev entitlement
 		log.Info("duplicate notification")
 	case errors.Is(err, entitlements.ErrStale):
 		log.Info("stale notification, not applied")
-	case errors.Is(err, entitlements.ErrIgnored), errors.Is(err, entitlements.ErrUnsupported):
+	case errors.Is(err, entitlements.ErrIgnored):
+		log.Info("notification ignored", "reason", err)
+	case errors.Is(err, entitlements.ErrUnsupported):
 		log.Warn("notification not applicable", "error", err)
 	case errors.Is(err, entitlements.ErrInvalidEvent):
 		// Permanent: the event can never be stored, so redelivery would loop.

@@ -39,7 +39,7 @@ func Run(t *testing.T, newStore func(t *testing.T) entitlements.Store) {
 	}{
 		{"CreateGetAndNotFound", createGetAndNotFound},
 		{"ZeroExpiresAtRoundTrips", zeroExpiresRoundTrips},
-		{"SandboxRoundTrip", sandboxRoundTrip},
+		{"EnvironmentRoundTrip", environmentRoundTrip},
 		{"FnSeesNilThenCurrent", fnSeesNilThenCurrent},
 		{"ApplyReturnsSavedEntitlement", applyReturnsSaved},
 		{"DuplicateEventIsRejectedWithoutCallingFn", duplicateRejected},
@@ -139,18 +139,18 @@ func zeroExpiresRoundTrips(t *testing.T, st entitlements.Store) {
 	}
 }
 
-func sandboxRoundTrip(t *testing.T, st entitlements.Store) {
+func environmentRoundTrip(t *testing.T, st entitlements.Store) {
 	e := event("e1", entitlements.StateActive, t0)
-	e.Sandbox = true
-	if got := mustApply(t, st, e); !got.Sandbox {
-		t.Error("Apply result lost Sandbox")
+	e.Environment = entitlements.EnvironmentSandbox
+	if got := mustApply(t, st, e); got.Environment != entitlements.EnvironmentSandbox {
+		t.Errorf("Apply result Environment = %q", got.Environment)
 	}
-	if !mustGet(t, st, entitlements.SourceApple, "tx1").Sandbox {
-		t.Error("stored entitlement lost Sandbox")
+	if got := mustGet(t, st, entitlements.SourceApple, "tx1"); got.Environment != entitlements.EnvironmentSandbox || !got.Sandbox() {
+		t.Errorf("stored Environment = %q", got.Environment)
 	}
 	mustApply(t, st, event("e2", entitlements.StateActive, t0.Add(time.Minute)))
-	if mustGet(t, st, entitlements.SourceApple, "tx1").Sandbox {
-		t.Error("Sandbox must follow the latest applied event")
+	if got := mustGet(t, st, entitlements.SourceApple, "tx1"); got.Sandbox() {
+		t.Errorf("Environment must follow the latest applied event, got %q", got.Environment)
 	}
 }
 

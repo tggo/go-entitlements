@@ -15,13 +15,18 @@ import (
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
-	"github.com/tggo/go-entitlements/google/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/google"
 	"github.com/tggo/go-entitlements/internal/testutil"
 )
 
 func newParser(tb testing.TB, f google.SubscriptionsFetcher, opts ...google.Option) *google.Parser {
 	tb.Helper()
-	p, err := google.NewParser(f, opts...)
+	return newParserFor(tb, f, pkg, opts...)
+}
+
+func newParserFor(tb testing.TB, f google.SubscriptionsFetcher, packageName string, opts ...google.Option) *google.Parser {
+	tb.Helper()
+	p, err := google.NewParser(f, packageName, opts...)
 	require.NoError(tb, err)
 	return p
 }
@@ -33,14 +38,14 @@ func subBody(tb testing.TB) []byte {
 
 func TestNewParser_NilFetcher(t *testing.T) {
 	t.Parallel()
-	p, err := google.NewParser(nil)
+	p, err := google.NewParser(nil, pkg)
 	require.Error(t, err)
 	assert.Nil(t, p)
 }
 
 func TestNewParser_NilOptionIgnored(t *testing.T) {
 	t.Parallel()
-	p, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t), nil, google.WithPackageName(pkg), nil)
+	p, err := google.NewParser(mocks.NewMockSubscriptionsFetcher(t), pkg, nil, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, p)
 }
@@ -49,8 +54,10 @@ func TestParse_RawIsACopy(t *testing.T) {
 	t.Parallel()
 	body := testutil.GooglePushBody(t, "msg-v", testutil.GoogleFixture(t, "notif_voided.json"))
 	orig := append([]byte(nil), body...)
+	f := mocks.NewMockSubscriptionsFetcher(t)
+	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired}, nil)
 
-	ev, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
+	ev, err := newParser(t, f).Parse(context.Background(), body)
 	require.NoError(t, err)
 	for i := range body {
 		body[i] = 'x'

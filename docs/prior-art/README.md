@@ -1,7 +1,8 @@
 # Prior art: what other libraries got wrong
 
-Research date: 2026-10-14. Our code state: commit `68d1624`. Nothing in the library was changed; this folder and
-`testdata/prior-art/` are the only additions.
+Notes on what other Apple and Google subscription libraries got wrong, from their public issue trackers, and which of those cases this library covers. The matching fixtures are in `testdata/prior-art/`.
+
+The "Us:" lines record the state of this library when the research was done; most of the gaps they list have since been fixed (see `DEFINITION_OF_DONE.md`).
 
 Method: `gh` listing of all issues (open and closed) and PR titles of each repo, keyword and title triage, then full
 bodies and comments for the ~90 relevant ones. Counts: 21 repos, about 950 issue titles scanned, about 1,700 PR titles
@@ -46,7 +47,7 @@ the evidence there is thinner than for verification.
 
 ## 2. Edge cases, most dangerous first
 
-Verdict legend: handled / partially / not handled / unknown. Paths are in `/Users/ruslan/code/go-entitlements`.
+Verdict legend: handled / partially / not handled / unknown. Paths are relative to the repository root.
 
 ### 1. Bundle ID and environment checks are optional and skip nested payloads
 - Evidence: [getmimo/dotnet#27](https://github.com/getmimo/app-store-server-library-dotnet/issues/27) (transactions and renewal info not compared with the verifier's bundle ID and environment: "a production verifier accepts any Apple-signed transaction, including sandbox transactions and transactions from other apps. Sandbox purchases are free"); Apple's own libs make `bundleId` a required constructor argument (python `signed_data_verifier.py:32-46`, `_verify_notification` lines 115-119, nested checks lines 73-76); [swift#34](https://github.com/apple/app-store-server-library-swift/issues/34) and [python#114](https://github.com/apple/app-store-server-library-python/pull/114) ("No bundle id is ok" shows they had to decide this explicitly); [node#227](https://github.com/apple/app-store-server-library-node/issues/227): Apple's maintainer advises handling sandbox and production separately, because notifications grant access.

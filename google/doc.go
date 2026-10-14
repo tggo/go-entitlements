@@ -23,28 +23,48 @@
 // (active or canceled) has no expiry at all, Parse returns ErrNoExpiry rather
 // than granting open-ended access.
 //
-// In the grace period the reference documents no grace end time
-// (InGracePeriodStateContext only has renewalDeclined), so expiryTime may
-// already be in the past while Google still grants access. The parser sets
-// ExpiresAt to max(expiryTime, notification time + grace duration); see
-// WithGraceDuration and DefaultGraceDuration. This is a bound, not Google's
-// exact value: verify against a live grace-period response, and rely on the
-// following ON_HOLD/EXPIRED notification to close the window.
+// In the grace period Play "dynamically extends the expiryTime value until the
+// grace period has expired"
+// (https://developer.android.com/google/play/billing/lifecycle/subscriptions),
+// so expiryTime is already the end of the grace period and is used as is:
+// no floor, no extension. If it is not in the future, entitlements.Entitlement.Active
+// is false. A grace subscription without expiryTime returns ErrNoExpiry.
+//
+// # Upgrades
+//
+// linkedPurchaseToken becomes Event.SupersedesTxID only when the new purchase
+// grants access (active, canceled, grace). A canceled pending upgrade, or an
+// expired or held link, never retires the old chain.
 //
 // # Voided purchases
 //
 // A voidedPurchaseNotification maps to refunded only for productType 1
-// (subscription) and a full refund (refundType 1). One-time products
+// (subscription) and a full refund (refundType 1); one-time products
 // (productType 2) and quantity-based partial refunds (refundType 2) return
 // entitlements.ErrIgnored. Absent fields count as subscription / full refund
 // (https://developer.android.com/google/play/billing/rtdn-reference).
 //
+// The push is not trusted on its own: the parser fetches the subscription and
+// applies the void only if the voided orderId is the latest successful order
+// of a line item (a void of an older renewal order does not end a running
+// subscription). When Google returns no order ids, the void applies only if
+// the subscription no longer grants access. Otherwise Parse returns
+// entitlements.ErrIgnored.
+//
+// # Input validation
+//
+// NewParser requires the package name: other packages are rejected before
+// anything is fetched. Control characters in messageId or purchaseToken, and an
+// eventTimeMillis more than WithMaxFutureSkew (default 5 minutes) ahead of the
+// clock, return ErrMalformed. Purchase tokens are secrets: errors from the
+// fetcher have them replaced by "[redacted]" (see RedactToken).
+//
 // # Test purchases
 //
 // subscriptionsv2 marks license-tester purchases with an empty testPurchase
-// object. Parse sets Event.Sandbox for them. By default they are processed
-// like real ones so QA works against production; use WithRejectTestPurchases
-// to refuse them with ErrTestPurchase.
+// object. Parse sets Event.Environment to entitlements.EnvironmentGoogleTest
+// for them, which Service ignores unless built WithAllowSandbox. Use
+// WithRejectTestPurchases to refuse them in the parser with ErrTestPurchase.
 //
 // # User identification
 //
@@ -54,7 +74,8 @@
 // # Fetch errors
 //
 // Errors from the fetcher carry one class (the original error stays
-// reachable): ErrPurchaseNotFound for HTTP 404/410, ErrFetchConfig for 401/403,
+// reachable): ErrPurchaseNotFound for HTTP 404/410, ErrPurchaseInvalid for 400,
+// ErrFetchConfig for 401/403,
 // ErrFetchTransient for everything else. Package google/androidpublisher
 // classifies the Play API errors; the parser marks any unclassified fetcher
 // error, including a timeout, as transient. httpx maps the classes to 200,

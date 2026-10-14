@@ -67,7 +67,7 @@ func TestNestedIdentityChecks(t *testing.T) {
 		{"outer bundle mismatch", nil, func(f *testutil.AppleFixture) {
 			dataOf(f)["bundleId"] = "com.other"
 		}, false},
-		{"outer sandbox with production pin", []apple.Option{apple.WithEnvironment("Production")}, func(f *testutil.AppleFixture) {
+		{"outer sandbox with production pin", []apple.Option{apple.WithEnvironment(entitlements.EnvironmentProduction)}, func(f *testutil.AppleFixture) {
 			dataOf(f)["environment"] = "Sandbox"
 			f.Transaction["environment"] = "Sandbox"
 			f.Renewal["environment"] = "Sandbox"
@@ -77,7 +77,7 @@ func TestNestedIdentityChecks(t *testing.T) {
 			f.Transaction["environment"] = "Sandbox"
 			f.Renewal["environment"] = "Sandbox"
 		}, true},
-		{"production pin, production payload", []apple.Option{apple.WithEnvironment("Production")}, func(*testutil.AppleFixture) {}, true},
+		{"production pin, production payload", []apple.Option{apple.WithEnvironment(entitlements.EnvironmentProduction)}, func(*testutil.AppleFixture) {}, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestEventCarriesEnvironment(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	ev, err := parserFor(ca).Parse(appleBodyMut(t, ca, "subscribed", func(*testutil.AppleFixture) {}))
 	require.NoError(t, err)
-	assert.Equal(t, "Production", ev.Environment)
+	assert.Equal(t, entitlements.EnvironmentProduction, ev.Environment)
 }
 
 // Notifications without "data" carry the bundle in summary / appData /
@@ -142,7 +142,7 @@ func TestEventSandboxFlag(t *testing.T) {
 			f.Renewal["environment"] = env
 		}))
 		require.NoError(t, err)
-		assert.Equal(t, want, ev.Sandbox, env)
+		assert.Equal(t, want, ev.Sandbox(), env)
 	}
 }
 
@@ -152,4 +152,13 @@ func dataOf(f *testutil.AppleFixture) map[string]any {
 		panic("fixture has no data object")
 	}
 	return d
+}
+
+func TestNewVerifier_RejectsUnknownEnvironmentPin(t *testing.T) {
+	_, err := apple.NewVerifier("com.example.app", apple.WithEnvironment("prod"))
+	require.Error(t, err)
+	_, err = apple.NewVerifier("com.example.app", apple.WithEnvironment(entitlements.EnvironmentGoogleTest))
+	require.Error(t, err)
+	_, err = apple.NewVerifier("com.example.app", apple.WithEnvironment(entitlements.EnvironmentSandbox))
+	require.NoError(t, err)
 }

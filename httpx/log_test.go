@@ -3,8 +3,11 @@ package httpx_test
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"sync"
 	"testing"
+
+	"github.com/tggo/go-entitlements/httpx"
 )
 
 type logRecord struct {
@@ -60,3 +63,15 @@ func testLogger(tb testing.TB) *slog.Logger {
 type testWriter struct{ t testing.TB }
 
 func (w testWriter) Write(p []byte) (int, error) { w.t.Log(string(p)); return len(p), nil }
+
+// mustGoogle builds a Google handler without push auth (tests exercise the
+// response policy, not authentication).
+func mustGoogle(tb testing.TB, p httpx.GoogleParser, svc httpx.Processor, log *slog.Logger, opts ...httpx.Option) http.Handler {
+	tb.Helper()
+	opts = append([]httpx.Option{httpx.WithLogger(log), httpx.WithInsecureNoAuth()}, opts...)
+	h, err := httpx.NewGoogleHandler(p, svc, opts...)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return h
+}

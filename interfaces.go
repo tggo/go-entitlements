@@ -21,7 +21,7 @@ import "context"
 //  6. If fn returns (nil, nil), the event ID is recorded, nothing is
 //     persisted, and Apply returns the current entitlement (nil if none).
 //  7. On success Apply returns the saved entitlement with Source and
-//     OriginalTxID set. ExpiresAt zero stays zero; Sandbox round-trips.
+//     OriginalTxID set. ExpiresAt zero stays zero; Environment round-trips.
 //  8. fn must be fast and pure: no I/O and no calls back into the Store. A
 //     store may call it more than once (it may retry a transaction), so the
 //     outcome must depend only on its last return value.

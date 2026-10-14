@@ -1,0 +1,8 @@
+title = "go-entitlements"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public test keys copied from Apple's MIT-licensed app-store-server-library repositories (see testdata/prior-art/README.md)"
+paths = ['''^testdata/prior-art/''']

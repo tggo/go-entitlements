@@ -110,7 +110,7 @@ func recordable(err error) bool {
 		errors.Is(err, entitlements.ErrUnsupported)
 }
 
-const selectCols = `source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, sandbox`
+const selectCols = `source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, environment`
 
 func scan(row pgx.Row) (*entitlements.Entitlement, error) {
 	var (
@@ -118,12 +118,14 @@ func scan(row pgx.Row) (*entitlements.Entitlement, error) {
 		source  string
 		state   string
 		expires *time.Time
+		env     string
 	)
-	if err := row.Scan(&source, &e.OriginalTxID, &e.UserID, &e.ProductID, &state, &expires, &e.UpdatedAt, &e.Version, &e.Sandbox); err != nil {
+	if err := row.Scan(&source, &e.OriginalTxID, &e.UserID, &e.ProductID, &state, &expires, &e.UpdatedAt, &e.Version, &env); err != nil {
 		return nil, err
 	}
 	e.Source = entitlements.Source(source)
 	e.State = entitlements.State(state)
+	e.Environment = entitlements.Environment(env)
 	e.UpdatedAt = e.UpdatedAt.UTC()
 	if expires != nil {
 		e.ExpiresAt = expires.UTC()
@@ -240,13 +242,13 @@ ON CONFLICT (source, event_id) DO NOTHING`,
 		expires = &next.ExpiresAt
 	}
 	if _, err = tx.Exec(ctx, `
-INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, sandbox)
+INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, expires_at, updated_at, version, environment)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (source, original_tx_id) DO UPDATE SET
     user_id = EXCLUDED.user_id, product_id = EXCLUDED.product_id, state = EXCLUDED.state,
     expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at, version = EXCLUDED.version,
-    sandbox = EXCLUDED.sandbox`,
-		string(ev.Source), ev.OriginalTxID, next.UserID, next.ProductID, string(next.State), expires, next.UpdatedAt, next.Version, next.Sandbox); err != nil {
+    environment = EXCLUDED.environment`,
+		string(ev.Source), ev.OriginalTxID, next.UserID, next.ProductID, string(next.State), expires, next.UpdatedAt, next.Version, string(next.Environment)); err != nil {
 		return nil, fmt.Errorf("postgres: save entitlement: %w", err)
 	}
 	if err = finish(ctx, tx, ev.Source, ev.ID, true, ""); err != nil {

@@ -21,7 +21,8 @@ func isTerminal(s State) bool { return s == StateRefunded || s == StateRevoked }
 //     is how a resubscription on the same chain looks), or an event with
 //     Restores set (REFUND_REVERSED) that is strictly newer. Later expired,
 //     billing_retry, grace or paused events are ignored with an ErrStale-wrapped
-//     error, so a late renewal-failure cannot undo a refund.
+//     error, so a late renewal-failure cannot undo a refund. An event with
+//     NoRevive set never lifts a terminal state, active or not.
 func Apply(cur *Entitlement, ev Event) (*Entitlement, error) {
 	if cur == nil {
 		return &Entitlement{
@@ -33,7 +34,7 @@ func Apply(cur *Entitlement, ev Event) (*Entitlement, error) {
 			ExpiresAt:    ev.ExpiresAt,
 			UpdatedAt:    ev.OccurredAt,
 			Version:      1,
-			Sandbox:      ev.Sandbox,
+			Environment:  ev.Environment,
 		}, nil
 	}
 	if ev.OccurredAt.Before(cur.UpdatedAt) {
@@ -50,7 +51,7 @@ func Apply(cur *Entitlement, ev Event) (*Entitlement, error) {
 			ErrStale, ev.ExpiresAt.Format(time.RFC3339), cur.ExpiresAt.Format(time.RFC3339))
 	}
 	if isTerminal(cur.State) && !isTerminal(ev.State) {
-		reactivates := (ev.State == StateActive || ev.Restores) && ev.OccurredAt.After(cur.UpdatedAt)
+		reactivates := !ev.NoRevive && (ev.State == StateActive || ev.Restores) && ev.OccurredAt.After(cur.UpdatedAt)
 		if !reactivates {
 			return nil, fmt.Errorf("%w: chain is %s, event wants %s", ErrStale, cur.State, ev.State)
 		}
@@ -66,7 +67,7 @@ func Apply(cur *Entitlement, ev Event) (*Entitlement, error) {
 	if ev.UserID != "" {
 		next.UserID = ev.UserID
 	}
-	next.Sandbox = ev.Sandbox
+	next.Environment = ev.Environment
 	next.UpdatedAt = ev.OccurredAt
 	next.Version = cur.Version + 1
 	return &next, nil

@@ -11,7 +11,7 @@ import (
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
-	"github.com/tggo/go-entitlements/google/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/google"
 	"github.com/tggo/go-entitlements/internal/testutil"
 )
 
@@ -29,7 +29,7 @@ func parseWith(t *testing.T, sub *google.SubscriptionPurchaseV2, opts ...google.
 	f := mocks.NewMockSubscriptionsFetcher(t)
 	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(sub, nil)
 	body := testutil.GooglePushBody(t, "m1", testutil.GoogleFixture(t, "notif_subscription.json"))
-	return newParser(t, f, opts...).Parse(context.Background(), body)
+	return newParser(t, f, append([]google.Option{atClock()}, opts...)...).Parse(context.Background(), body)
 }
 
 // Gap 2.
@@ -70,7 +70,12 @@ func TestGap4_Voided(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			raw := testutil.PriorArtFixture(t, tc.fixture)
-			ev, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), raw)
+			f := mocks.NewMockSubscriptionsFetcher(t) // one-time: never fetched
+			if tc.wantErr == nil {
+				f.EXPECT().GetV2(mock.Anything, "com.some.app", "PURCHASE_TOKEN").
+					Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired}, nil)
+			}
+			ev, err := newParserFor(t, f, "com.some.app").Parse(context.Background(), raw)
 			if tc.wantErr != nil {
 				assert.ErrorIs(t, err, tc.wantErr)
 				return
@@ -91,7 +96,9 @@ func TestGap4_PartialRefundIgnored(t *testing.T) {
 func TestGap4_MissingTypesTreatedAsFullSubscriptionRefund(t *testing.T) {
 	t.Parallel()
 	payload := []byte(`{"packageName":"com.example.app","eventTimeMillis":"1760436000000","voidedPurchaseNotification":{"purchaseToken":"tok-1"}}`)
-	ev, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), testutil.GooglePushBody(t, "m", payload))
+	f := mocks.NewMockSubscriptionsFetcher(t)
+	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired}, nil)
+	ev, err := newParser(t, f).Parse(context.Background(), testutil.GooglePushBody(t, "m", payload))
 	require.NoError(t, err)
 	assert.Equal(t, entitlements.StateRefunded, ev.State)
 }
@@ -101,7 +108,8 @@ func TestGap5_TestPurchaseMarked(t *testing.T) {
 	t.Parallel()
 	res, err := parseWith(t, priorSub(t, "sub_active_obfuscated_account_only.json"))
 	require.NoError(t, err)
-	assert.True(t, res.Sandbox)
+	assert.Equal(t, entitlements.EnvironmentGoogleTest, res.Environment)
+	assert.True(t, res.Sandbox())
 	assert.Equal(t, entitlements.StateActive, res.State)
 }
 
@@ -109,7 +117,7 @@ func TestGap5_RealPurchaseNotMarked(t *testing.T) {
 	t.Parallel()
 	res, err := parseWith(t, priorSub(t, "sub_active_profile_id_only.json"))
 	require.NoError(t, err)
-	assert.False(t, res.Sandbox)
+	assert.False(t, res.Sandbox())
 }
 
 func TestGap5_RejectTestPurchases(t *testing.T) {
@@ -127,7 +135,7 @@ func TestGap5_ParseStillWorksForTestPurchaseByDefault(t *testing.T) {
 	ev, err := newParser(t, f).Parse(context.Background(), body)
 	require.NoError(t, err)
 	assert.Equal(t, "VioUT4kHwh0ur8crMexs", ev.UserID)
-	assert.True(t, ev.Sandbox)
+	assert.True(t, ev.Sandbox())
 }
 
 // Gap 7.
@@ -147,46 +155,10 @@ func TestGap7_AccountIDWinsOverProfileID(t *testing.T) {
 	assert.Equal(t, "acct-1", res.UserID)
 }
 
-// Gap 9.
+// Gap 9 (grace) is covered by TestGrace_TrustsExpiryTime in security_test.go.
 func graceSub(expiry time.Time) *google.SubscriptionPurchaseV2 {
 	return &google.SubscriptionPurchaseV2{
 		SubscriptionState: google.StateInGracePeriod,
 		LineItems:         []google.LineItem{{ProductID: "p", ExpiryTime: expiry}},
 	}
-}
-
-func TestGap9_GraceWithPastExpiryIsActiveUntilGraceEnd(t *testing.T) {
-	t.Parallel()
-	occurred := time.UnixMilli(1760436000000).UTC()
-	res, err := parseWith(t, graceSub(occurred.Add(-time.Hour))) // original expiry already passed
-	require.NoError(t, err)
-	assert.Equal(t, occurred.Add(google.DefaultGraceDuration), res.ExpiresAt)
-	ent := entitlements.Entitlement{State: res.State, ExpiresAt: res.ExpiresAt}
-	assert.True(t, ent.Active(occurred.Add(24*time.Hour)))
-	assert.False(t, ent.Active(occurred.Add(google.DefaultGraceDuration+time.Second)))
-}
-
-func TestGap9_GraceDurationOption(t *testing.T) {
-	t.Parallel()
-	occurred := time.UnixMilli(1760436000000).UTC()
-	res, err := parseWith(t, graceSub(occurred.Add(-time.Hour)), google.WithGraceDuration(3*24*time.Hour))
-	require.NoError(t, err)
-	assert.Equal(t, occurred.Add(72*time.Hour), res.ExpiresAt)
-}
-
-func TestGap9_GraceWithFutureExpiryKept(t *testing.T) {
-	t.Parallel()
-	occurred := time.UnixMilli(1760436000000).UTC()
-	far := occurred.Add(60 * 24 * time.Hour)
-	res, err := parseWith(t, graceSub(far))
-	require.NoError(t, err)
-	assert.Equal(t, far, res.ExpiresAt)
-}
-
-func TestGap9_GraceWithoutExpiryUsesGraceWindow(t *testing.T) {
-	t.Parallel()
-	occurred := time.UnixMilli(1760436000000).UTC()
-	res, err := parseWith(t, graceSub(time.Time{}))
-	require.NoError(t, err)
-	assert.Equal(t, occurred.Add(google.DefaultGraceDuration), res.ExpiresAt)
 }

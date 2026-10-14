@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 )
 
 // AppleFixture is the shape of testdata/apple/*.json: the decoded notification
@@ -60,4 +62,26 @@ func (f AppleFixture) SignBody(tb testing.TB, ca *AppleCA) []byte {
 		tb.Fatal(err)
 	}
 	return body
+}
+
+// Data returns the notification's "data" object, for tests that tweak it.
+func (f AppleFixture) Data() map[string]any {
+	d, ok := f.Notification["data"].(map[string]any)
+	if !ok {
+		panic("fixture has no data object")
+	}
+	return d
+}
+
+// ShiftTimes moves every millisecond date field (keys ending in "Date") of the
+// fixture's notification, transaction and renewal info by d. Demos use it to
+// make a fixture's dates relative to now.
+func (f AppleFixture) ShiftTimes(d time.Duration) {
+	for _, m := range []map[string]any{f.Notification, f.Transaction, f.Renewal, f.Data()} {
+		for k, v := range m {
+			if n, ok := v.(float64); ok && strings.HasSuffix(k, "Date") && n != 0 {
+				m[k] = n + float64(d.Milliseconds())
+			}
+		}
+	}
 }

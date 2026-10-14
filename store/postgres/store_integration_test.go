@@ -390,3 +390,34 @@ func (s *StoreSuite) TestLockWaitHonoursContext() {
 	_, err = s.process(s.ev("hold-3", entitlements.StateActive, s.now.Add(2*time.Second)))
 	s.NoError(err, "the timed-out event stays retryable")
 }
+
+// Migration 004 turns the old sandbox flag into an environment.
+func (s *StoreSuite) TestMigration004ConvertsSandboxFlag() {
+	ctx := context.Background()
+	_, err := s.db.Exec(ctx, `CREATE DATABASE migrate_env`)
+	s.Require().NoError(err)
+	dsn := strings.Replace(s.dsn, "/entitlements?", "/migrate_env?", 1)
+	pool, err := pgxpool.New(ctx, dsn)
+	s.Require().NoError(err)
+	defer pool.Close()
+	st := postgres.New(pool)
+
+	old := fstest.MapFS{}
+	for _, name := range []string{"001_init.sql", "002_sandbox.sql", "003_dedupe_per_source.sql"} {
+		b, err := os.ReadFile("migrations/" + name)
+		s.Require().NoError(err)
+		old["migrations/"+name] = &fstest.MapFile{Data: b}
+	}
+	s.Require().NoError(st.MigrateFS(ctx, old))
+	_, err = pool.Exec(ctx, `INSERT INTO entitlements (source, original_tx_id, user_id, product_id, state, updated_at, version, sandbox)
+		VALUES ('apple','a','u','p','active',now(),1,true), ('apple','b','u','p','active',now(),1,false)`)
+	s.Require().NoError(err)
+
+	s.Require().NoError(st.Migrate(ctx))
+	a, err := st.Get(ctx, entitlements.SourceApple, "a")
+	s.Require().NoError(err)
+	b, err := st.Get(ctx, entitlements.SourceApple, "b")
+	s.Require().NoError(err)
+	s.Equal(entitlements.EnvironmentSandbox, a.Environment)
+	s.Equal(entitlements.Environment(""), b.Environment)
+}

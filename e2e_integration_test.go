@@ -23,8 +23,8 @@ import (
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/apple"
 	"github.com/tggo/go-entitlements/google"
-	googlemocks "github.com/tggo/go-entitlements/google/mocks"
 	"github.com/tggo/go-entitlements/httpx"
+	googlemocks "github.com/tggo/go-entitlements/internal/mocks/google"
 	"github.com/tggo/go-entitlements/internal/testutil"
 	"github.com/tggo/go-entitlements/store/postgres"
 )
@@ -112,12 +112,14 @@ func (s *E2ESuite) SetupTest() {
 	appleVerifier, err := apple.NewVerifier(appleBundle, apple.WithRootPool(s.ca.Pool))
 	s.Require().NoError(err)
 	appleParser := apple.NewParser(appleVerifier)
-	googleParser, err := google.NewParser(s.fetcher, google.WithPackageName(googlePkg))
+	googleParser, err := google.NewParser(s.fetcher, googlePkg)
 	s.Require().NoError(err)
 
 	mux := http.NewServeMux()
-	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(appleParser, svc, log))
-	mux.Handle("/webhooks/google", httpx.NewGoogleHandler(googleParser, svc, log))
+	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(appleParser, svc, httpx.WithLogger(log)))
+	googleHandler, err := httpx.NewGoogleHandler(googleParser, svc, httpx.WithLogger(log), httpx.WithInsecureNoAuth()) // the test posts directly, with no Pub/Sub token
+	s.Require().NoError(err)
+	mux.Handle("/webhooks/google", googleHandler)
 	s.srv = httptest.NewServer(mux)
 }
 

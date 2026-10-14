@@ -5,7 +5,12 @@
     "notificationUUID": "uuid-renewal_status_off_lapsed",
     "version": "2.0",
     "signedDate": 1760000000000,
-    "data": {"appAppleId": 123456, "bundleId": "com.example.app", "environment": "Production", "status": 1}
+    "data": {
+      "appAppleId": 123456,
+      "bundleId": "com.example.app",
+      "environment": "Production",
+      "status": 2
+    }
   },
   "transaction": {
     "transactionId": "2000000000002",

@@ -58,7 +58,7 @@ type Verifier struct {
 	roots       *x509.CertPool
 	timeFn      func() time.Time
 	bundleID    string
-	environment string
+	environment entitlements.Environment
 	anyBundle   bool
 }
 
@@ -91,11 +91,14 @@ func WithTimeFn(fn func() time.Time) Option {
 }
 
 // WithEnvironment rejects notifications (outer and nested) whose environment
-// differs: "Production" or "Sandbox". Without it both are accepted, nested
-// payloads must still match the outer notification's environment, and the
-// resulting Event.Environment tells the caller which one it was. A production
-// service that stores both should pin "Production" (sandbox purchases are free).
-func WithEnvironment(env string) Option { return func(v *Verifier) { v.environment = env } }
+// differs: EnvironmentProduction or EnvironmentSandbox (NewVerifier rejects
+// any other value). Without it both are accepted and nested payloads must
+// still match the outer notification's environment. A production service
+// should pin EnvironmentProduction: sandbox purchases are free, and
+// entitlements.Service ignores sandbox events unless built WithAllowSandbox.
+func WithEnvironment(env entitlements.Environment) Option {
+	return func(v *Verifier) { v.environment = env }
+}
 
 // WithInsecureAnyBundle lets NewVerifier accept an empty bundle ID and skip
 // the bundle check. Any Apple-signed notification from any app then passes
@@ -112,6 +115,11 @@ func NewVerifier(bundleID string, opts ...Option) (*Verifier, error) {
 		if o != nil {
 			o(v)
 		}
+	}
+	switch v.environment {
+	case "", entitlements.EnvironmentProduction, entitlements.EnvironmentSandbox:
+	default:
+		return nil, fmt.Errorf("apple: unsupported environment %q: use entitlements.EnvironmentProduction or EnvironmentSandbox", v.environment)
 	}
 	if v.bundleID == "" && !v.anyBundle {
 		return nil, errors.New("apple: bundle ID is required (use WithInsecureAnyBundle to skip the check)")
@@ -297,7 +305,7 @@ func (v *Verifier) checkOuterIdentity(p *NotificationPayload) (string, error) {
 	if v.bundleID != "" && (!found || id.BundleID != v.bundleID) {
 		return "", invalid("bundleId %q, want %q", id.BundleID, v.bundleID)
 	}
-	if v.environment != "" && id.Environment != v.environment {
+	if v.environment != "" && entitlements.Environment(id.Environment) != v.environment {
 		return "", invalid("environment %q, want %q", id.Environment, v.environment)
 	}
 	return id.Environment, nil
@@ -310,7 +318,7 @@ func (v *Verifier) checkNested(what, bundleID, env, outerEnv string) error {
 	if v.bundleID != "" && bundleID != v.bundleID {
 		return invalid("%s bundleId %q, want %q", what, bundleID, v.bundleID)
 	}
-	if v.environment != "" && env != v.environment {
+	if v.environment != "" && entitlements.Environment(env) != v.environment {
 		return invalid("%s environment %q, want %q", what, env, v.environment)
 	}
 	if env != "" && outerEnv != "" && env != outerEnv {

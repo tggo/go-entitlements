@@ -3,6 +3,7 @@ package entitlements_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -12,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tggo/go-entitlements"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/entitlements"
 	"github.com/tggo/go-entitlements/internal/testutil"
-	"github.com/tggo/go-entitlements/mocks"
 	"github.com/tggo/go-entitlements/store/memory"
 )
 
@@ -249,4 +250,111 @@ func TestService_Supersede_NewChainFirstAndRetireIsRetried(t *testing.T) {
 	assert.Equal(t, entitlements.StateExpired, a.State)
 	b, _ = st.Get(ctx, entitlements.SourceApple, "tokB")
 	assert.Equal(t, int64(1), b.Version, "main event not applied twice")
+}
+
+func TestService_SandboxEventsAreIgnoredByDefault(t *testing.T) {
+	ctx := context.Background()
+	st := memory.New()
+	sandbox := ev(entitlements.StateActive, time.Now())
+	sandbox.Environment = entitlements.EnvironmentSandbox
+
+	_, err := entitlements.NewService(st).Process(ctx, sandbox)
+	require.ErrorIs(t, err, entitlements.ErrIgnored)
+	_, err = st.Get(ctx, sandbox.Source, sandbox.OriginalTxID)
+	require.ErrorIs(t, err, entitlements.ErrNotFound, "an ignored sandbox event leaves no trace and can be replayed later")
+
+	// With the option it applies, and only a Service with the option grants access.
+	allow := entitlements.NewService(st, entitlements.WithAllowSandbox())
+	_, err = allow.Process(ctx, sandbox)
+	require.NoError(t, err)
+	ok, err := allow.IsActive(ctx, "u1", "pro")
+	require.NoError(t, err)
+	assert.True(t, ok)
+	ok, err = entitlements.NewService(st).IsActive(ctx, "u1", "pro")
+	require.NoError(t, err)
+	assert.False(t, ok, "a free test purchase must not unlock production access")
+
+	for _, env := range []entitlements.Environment{"", entitlements.EnvironmentProduction} {
+		e := ev(entitlements.StateActive, time.Now())
+		e.ID, e.OriginalTxID, e.Environment = "prod-"+string(env), "txp"+string(env), env
+		_, err = entitlements.NewService(memory.New()).Process(ctx, e)
+		require.NoError(t, err, "environment %q is production", env)
+	}
+}
+
+func TestService_Process_RejectsUnsafeIdentifiers(t *testing.T) {
+	long := strings.Repeat("x", 257)
+	for name, mut := range map[string]func(e *entitlements.Event){
+		"NUL in event id":   func(e *entitlements.Event) { e.ID = "a\x00b" },
+		"NUL in tx id":      func(e *entitlements.Event) { e.OriginalTxID = "a\x00b" },
+		"NUL in user id":    func(e *entitlements.Event) { e.UserID = "a\x00b" },
+		"event id too long": func(e *entitlements.Event) { e.ID = long },
+		"tx id too long":    func(e *entitlements.Event) { e.OriginalTxID = long },
+		"user id too long":  func(e *entitlements.Event) { e.UserID = long },
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := ev(entitlements.StateActive, t0)
+			mut(&e)
+			_, err := newSvc(t, memory.New()).Process(context.Background(), e)
+			require.ErrorIs(t, err, entitlements.ErrInvalidEvent)
+		})
+	}
+}
+
+func TestService_GetAndListByUser(t *testing.T) {
+	ctx := context.Background()
+	svc := newSvc(t, memory.New())
+	_, err := svc.Get(ctx, entitlements.SourceApple, "tx1")
+	require.ErrorIs(t, err, entitlements.ErrNotFound)
+
+	_, err = svc.Process(ctx, ev(entitlements.StateActive, t0))
+	require.NoError(t, err)
+	got, err := svc.Get(ctx, entitlements.SourceApple, "tx1")
+	require.NoError(t, err)
+	assert.Equal(t, entitlements.StateActive, got.State)
+	list, err := svc.ListByUser(ctx, "u1")
+	require.NoError(t, err)
+	assert.Len(t, list, 1)
+	list, err = svc.ListByUser(ctx, "")
+	require.NoError(t, err)
+	assert.Empty(t, list)
+}
+
+func TestService_UserlessEventIsAppliedAndWarned(t *testing.T) {
+	var buf strings.Builder
+	log := slog.New(slog.NewTextHandler(&buf, nil))
+	svc := entitlements.NewService(memory.New(), entitlements.WithLogger(log))
+	e := ev(entitlements.StateActive, t0)
+	e.UserID = ""
+	_, err := svc.Process(context.Background(), e)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "level=WARN")
+	assert.Contains(t, buf.String(), "no user id")
+}
+
+func TestService_Supersede_InheritsUserIDFromOldChain(t *testing.T) {
+	ctx := context.Background()
+	st := memory.New()
+	svc := newSvc(t, st)
+
+	old := ev(entitlements.StateActive, t0)
+	old.ID, old.OriginalTxID = "e1", "tokA"
+	_, err := svc.Process(ctx, old)
+	require.NoError(t, err)
+
+	nw := ev(entitlements.StateActive, t0.Add(time.Minute))
+	nw.ID, nw.OriginalTxID, nw.SupersedesTxID, nw.UserID, nw.ProductID = "e2", "tokB", "tokA", "", "pro-yearly"
+	got, err := svc.Process(ctx, nw)
+	require.NoError(t, err)
+	assert.Equal(t, "u1", got.UserID, "an upgrade token without an account id keeps the user of the chain it replaces")
+	ok, err := svc.IsActive(ctx, "u1", "pro-yearly")
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	// An id on the new event wins; an unknown old chain is not an error.
+	other := ev(entitlements.StateActive, t0.Add(2*time.Minute))
+	other.ID, other.OriginalTxID, other.SupersedesTxID, other.UserID = "e3", "tokC", "ghost", ""
+	got, err = svc.Process(ctx, other)
+	require.NoError(t, err)
+	assert.Empty(t, got.UserID)
 }

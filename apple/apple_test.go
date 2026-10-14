@@ -92,7 +92,7 @@ func TestParser_IgnoredAndUnsupported(t *testing.T) {
 	assert.ErrorIs(t, err, entitlements.ErrIgnored)
 
 	_, err = p.Parse(testutil.LoadAppleFixture(t, "price_increase").SignBody(t, ca))
-	assert.ErrorIs(t, err, entitlements.ErrUnsupported)
+	assert.ErrorIs(t, err, entitlements.ErrIgnored)
 }
 
 func TestParser_MissingTransactionData(t *testing.T) {
@@ -224,7 +224,7 @@ func TestVerifier_BundleAndEnvironment(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	body := testutil.LoadAppleFixture(t, "subscribed").SignBody(t, ca)
 
-	_, err := parserFor(ca, apple.WithEnvironment("Production")).Parse(body)
+	_, err := parserFor(ca, apple.WithEnvironment(entitlements.EnvironmentProduction)).Parse(body)
 	require.NoError(t, err)
 
 	v, err := apple.NewVerifier("com.other.app", apple.WithRootPool(ca.Pool))
@@ -232,7 +232,7 @@ func TestVerifier_BundleAndEnvironment(t *testing.T) {
 	_, err = apple.NewParser(v).Parse(body)
 	assert.ErrorIs(t, err, entitlements.ErrInvalidSignature)
 
-	_, err = parserFor(ca, apple.WithEnvironment("Sandbox")).Parse(body)
+	_, err = parserFor(ca, apple.WithEnvironment(entitlements.EnvironmentSandbox)).Parse(body)
 	assert.ErrorIs(t, err, entitlements.ErrInvalidSignature)
 }
 

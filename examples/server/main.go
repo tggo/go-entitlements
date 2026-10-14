@@ -7,8 +7,8 @@
 //	APPLE_BUNDLE_ID                required, rejects notifications for other apps
 //	GOOGLE_PACKAGE_NAME            optional, enables /webhooks/google
 //	GOOGLE_APPLICATION_CREDENTIALS optional, service account key for the Play Developer API (else ADC)
-//	GOOGLE_PUSH_AUDIENCE           optional, with GOOGLE_PUSH_SERVICE_ACCOUNT: verify the Pub/Sub OIDC token
-//	GOOGLE_PUSH_SERVICE_ACCOUNT    optional, see above
+//	GOOGLE_PUSH_AUDIENCE           required with GOOGLE_PACKAGE_NAME: audience of the Pub/Sub push OIDC token
+//	GOOGLE_PUSH_SERVICE_ACCOUNT    required with GOOGLE_PACKAGE_NAME: service account email of the push subscription
 //	APPLE_ROOT_CA_PEM              LOCAL DEMO ONLY: path to a PEM root replacing Apple's. Never set in production.
 //	LISTEN_ADDR                    optional, default :8080
 package main
@@ -84,28 +84,30 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(appleVerifier), svc, log))
+	mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(appleVerifier), svc, httpx.WithLogger(log)))
 
 	if pkg := os.Getenv("GOOGLE_PACKAGE_NAME"); pkg != "" {
 		svcPlay, err := play.NewService(ctx) // honours GOOGLE_APPLICATION_CREDENTIALS
 		if err != nil {
 			return err
 		}
-		parser, err := google.NewParser(androidpublisher.NewFetcher(svcPlay), google.WithPackageName(pkg))
+		parser, err := google.NewParser(androidpublisher.NewFetcher(svcPlay), pkg)
 		if err != nil {
 			return err
 		}
-		var opts []httpx.Option
-		if aud, sa := os.Getenv("GOOGLE_PUSH_AUDIENCE"), os.Getenv("GOOGLE_PUSH_SERVICE_ACCOUNT"); aud != "" && sa != "" {
-			auth, err := pubsubauth.New(aud, sa)
-			if err != nil {
-				return err
-			}
-			opts = append(opts, httpx.WithPushAuthenticator(auth))
-		} else {
-			log.Warn("Pub/Sub push authentication is off: set GOOGLE_PUSH_AUDIENCE and GOOGLE_PUSH_SERVICE_ACCOUNT")
+		aud, sa := os.Getenv("GOOGLE_PUSH_AUDIENCE"), os.Getenv("GOOGLE_PUSH_SERVICE_ACCOUNT")
+		if aud == "" || sa == "" {
+			return errors.New("GOOGLE_PACKAGE_NAME is set: GOOGLE_PUSH_AUDIENCE and GOOGLE_PUSH_SERVICE_ACCOUNT are required, an unauthenticated push endpoint lets anyone forge refunds")
 		}
-		mux.Handle("/webhooks/google", httpx.NewGoogleHandler(parser, svc, log, opts...))
+		auth, err := pubsubauth.New(aud, sa)
+		if err != nil {
+			return err
+		}
+		h, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(log), httpx.WithPushAuthenticator(auth))
+		if err != nil {
+			return err
+		}
+		mux.Handle("/webhooks/google", h)
 	}
 
 	mux.HandleFunc("GET /entitlements", func(w http.ResponseWriter, r *http.Request) {

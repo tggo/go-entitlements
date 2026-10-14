@@ -29,13 +29,15 @@ func NewFetcher(svc *play.Service) *Fetcher {
 }
 
 // GetV2 implements google.SubscriptionsFetcher. Failures are wrapped with one
-// of google.ErrPurchaseNotFound (404, 410), google.ErrFetchConfig (401, 403)
-// or google.ErrFetchTransient (everything else); the original error stays
-// reachable through errors.Is/As.
+// of google.ErrPurchaseNotFound (404, 410), google.ErrPurchaseInvalid (400),
+// google.ErrFetchConfig (401, 403) or google.ErrFetchTransient (everything
+// else); the original error stays reachable through errors.Is/As. The purchase
+// token (a secret that is part of the request URL) is removed from the error
+// text.
 func (f *Fetcher) GetV2(ctx context.Context, packageName, purchaseToken string) (*google.SubscriptionPurchaseV2, error) {
 	resp, err := f.svc.Purchases.Subscriptionsv2.Get(packageName, purchaseToken).Context(ctx).Do()
 	if err != nil {
-		return nil, classify(err)
+		return nil, google.RedactToken(classify(err), purchaseToken)
 	}
 	return convertV2(resp)
 }
@@ -46,6 +48,8 @@ func classify(err error) error {
 		switch apiErr.Code {
 		case http.StatusNotFound, http.StatusGone:
 			return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrPurchaseNotFound, err)
+		case http.StatusBadRequest:
+			return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrPurchaseInvalid, err)
 		case http.StatusUnauthorized, http.StatusForbidden:
 			return fmt.Errorf("androidpublisher: subscriptionsv2.get: %w: %w", google.ErrFetchConfig, err)
 		}
@@ -55,7 +59,7 @@ func classify(err error) error {
 
 func convertV2(resp *play.SubscriptionPurchaseV2) (*google.SubscriptionPurchaseV2, error) {
 	out := &google.SubscriptionPurchaseV2{
-		SubscriptionState:    resp.SubscriptionState,
+		SubscriptionState:    google.State(resp.SubscriptionState),
 		LinkedPurchaseToken:  resp.LinkedPurchaseToken,
 		AcknowledgementState: resp.AcknowledgementState,
 		TestPurchase:         resp.TestPurchase != nil,
@@ -70,7 +74,7 @@ func convertV2(resp *play.SubscriptionPurchaseV2) (*google.SubscriptionPurchaseV
 		if li == nil {
 			continue
 		}
-		item := google.LineItem{ProductID: li.ProductId}
+		item := google.LineItem{ProductID: li.ProductId, LatestSuccessfulOrderID: li.LatestSuccessfulOrderId}
 		if li.ExpiryTime != "" {
 			t, err := time.Parse(time.RFC3339Nano, li.ExpiryTime)
 			if err != nil {

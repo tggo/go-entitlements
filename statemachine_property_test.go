@@ -50,7 +50,7 @@ func randomEvents(rnd *rand.Rand, n int, states []entitlements.State) []entitlem
 			ID: fmt.Sprint("e", i), Source: entitlements.SourceApple, UserID: "u", OriginalTxID: "tx",
 			ProductID: fmt.Sprint("p", rnd.IntN(3)), State: states[rnd.IntN(len(states))],
 			OccurredAt: at, ExpiresAt: at.Add(time.Duration(1+rnd.IntN(100)) * time.Hour),
-			Sandbox: rnd.IntN(2) == 0, Restores: rnd.IntN(4) == 0,
+			Environment: []entitlements.Environment{"", entitlements.EnvironmentSandbox}[rnd.IntN(2)], Restores: rnd.IntN(4) == 0,
 		}
 	}
 	return evs
@@ -90,7 +90,7 @@ func TestApply_Property_OrderIndependentWithoutTerminalStates(t *testing.T) {
 		assert.Equal(t, want.ExpiresAt, got.ExpiresAt)
 		assert.Equal(t, want.ProductID, got.ProductID)
 		assert.Equal(t, want.UpdatedAt, got.UpdatedAt)
-		assert.Equal(t, want.Sandbox, got.Sandbox)
+		assert.Equal(t, want.Environment, got.Environment)
 		if t.Failed() {
 			t.Logf("events: %+v", evs)
 			return

@@ -33,11 +33,16 @@ func permutations(n int) [][]int {
 // runChain feeds three userless events (oldest first: subscribed, renewal
 // status change, expired) through parser+Service+memory store in every
 // delivery order and checks the end state is expired.
+func newSandboxSvc(t *testing.T, st entitlements.Store) *entitlements.Service {
+	t.Helper()
+	return entitlements.NewService(st, entitlements.WithLogger(testutil.NewLogger(t)), entitlements.WithAllowSandbox())
+}
+
 func runChain(t *testing.T, parser *apple.Parser, bodies [][]byte) {
 	t.Helper()
 	for _, order := range permutations(len(bodies)) {
 		st := memory.New()
-		svc := newSvc(t, st)
+		svc := newSandboxSvc(t, st)
 		var maxIdx = -1
 		applied := 0
 		for _, i := range order {
@@ -62,7 +67,7 @@ func runChain(t *testing.T, parser *apple.Parser, bodies [][]byte) {
 	}
 	// Delivered order: all three applied.
 	st := memory.New()
-	svc := newSvc(t, st)
+	svc := newSandboxSvc(t, st)
 	for _, b := range bodies {
 		ev, err := parser.Parse(b)
 		require.NoError(t, err)
@@ -170,7 +175,10 @@ func TestApple_RefundReversedAfterExpiry(t *testing.T) {
 	_, _ = process(t, p, svc, appleBody(t, ca, "subscribed", at(msSub)))
 	_, _ = process(t, p, svc, appleBody(t, ca, "refund", at(msSub+1000)))
 	// Reversed after the subscription period already ended: chain is expired, not active.
-	got, err := process(t, p, svc, appleBody(t, ca, "refund_reversed", at(msExpiry+1000)))
+	got, err := process(t, p, svc, appleBody(t, ca, "refund_reversed", func(f *testutil.AppleFixture) {
+		at(msExpiry + 1000)(f)
+		f.Data()["status"] = float64(2)
+	}))
 	require.NoError(t, err)
 	assert.Equal(t, entitlements.StateExpired, got.State)
 }
@@ -284,12 +292,12 @@ func TestApple_TokenAppearsLater(t *testing.T) {
 }
 
 func TestApply_SandboxFlagFollowsEvent(t *testing.T) {
-	ev := entitlements.Event{ID: "a", Source: entitlements.SourceApple, OriginalTxID: "t", State: entitlements.StateActive, Sandbox: true, OccurredAt: time.UnixMilli(1)}
+	ev := entitlements.Event{ID: "a", Source: entitlements.SourceApple, OriginalTxID: "t", State: entitlements.StateActive, Environment: entitlements.EnvironmentSandbox, OccurredAt: time.UnixMilli(1)}
 	e, err := entitlements.Apply(nil, ev)
 	require.NoError(t, err)
-	assert.True(t, e.Sandbox)
-	ev.Sandbox, ev.OccurredAt = false, time.UnixMilli(2)
+	assert.True(t, e.Sandbox())
+	ev.Environment, ev.OccurredAt = entitlements.EnvironmentProduction, time.UnixMilli(2)
 	e, err = entitlements.Apply(e, ev)
 	require.NoError(t, err)
-	assert.False(t, e.Sandbox)
+	assert.False(t, e.Sandbox())
 }

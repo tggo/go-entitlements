@@ -25,11 +25,9 @@ type appleHandler struct {
 // endpoint. Parsing Apple notifications involves no I/O, so any parse error
 // other than TEST/unsupported types is permanent: 401 for a failed signature,
 // 400 for anything else.
-func NewAppleHandler(parser AppleParser, svc Processor, logger *slog.Logger, opts ...Option) http.Handler {
-	if logger == nil {
-		logger = slog.New(slog.DiscardHandler)
-	}
-	return &appleHandler{parser: parser, svc: svc, log: logger.With("handler", "apple"), cfg: newConfig(opts)}
+func NewAppleHandler(parser AppleParser, svc Processor, opts ...Option) http.Handler {
+	cfg := newConfig(opts)
+	return &appleHandler{parser: parser, svc: svc, log: cfg.log.With("handler", "apple"), cfg: cfg}
 }
 
 func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +39,10 @@ func (h *appleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		process(w, r, h.svc, ev, h.log)
-	case errors.Is(err, entitlements.ErrIgnored), errors.Is(err, entitlements.ErrUnsupported):
+	case errors.Is(err, entitlements.ErrIgnored):
+		h.log.Info("notification ignored", "reason", err)
+		w.WriteHeader(http.StatusOK)
+	case errors.Is(err, entitlements.ErrUnsupported):
 		h.log.Warn("notification not applicable", "error", err)
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, entitlements.ErrInvalidSignature):

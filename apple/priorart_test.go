@@ -147,7 +147,7 @@ func TestPriorArt_DatalessAndUnmappedNotifications(t *testing.T) {
 
 	for _, name := range []string{"signedRescindConsentNotification.json", "signedExternalPurchaseTokenNotification.json"} {
 		_, err = p.Parse(body(load(name)))
-		assert.ErrorIs(t, err, entitlements.ErrUnsupported, name)
+		assert.ErrorIs(t, err, entitlements.ErrIgnored, name)
 	}
 
 	cr := load("signedConsumptionRequestNotification.json")
@@ -156,7 +156,7 @@ func TestPriorArt_DatalessAndUnmappedNotifications(t *testing.T) {
 	data["signedTransactionInfo"] = ca.Sign(t, map[string]any{"transactionId": "1", "originalTransactionId": "1", "bundleId": "com.example", "productId": "p", "environment": "LocalTesting"})
 	data["signedRenewalInfo"] = ca.Sign(t, map[string]any{"environment": "LocalTesting"})
 	_, err = p.Parse(body(cr))
-	assert.ErrorIs(t, err, entitlements.ErrUnsupported)
+	assert.ErrorIs(t, err, entitlements.ErrIgnored)
 
 	// Placeholder nested strings fail verification rather than being trusted.
 	_, err = p.Parse(body(load("signedNotification.json")))
@@ -167,13 +167,12 @@ func TestGraceWithoutRenewalInfo(t *testing.T) {
 	ca := testutil.NewAppleCA(t)
 	f := testutil.LoadAppleFixture(t, "did_fail_to_renew_grace")
 	f.Renewal = nil
-	ev, err := parserFor(ca).Parse(f.SignBody(t, ca))
-	require.NoError(t, err)
-	// Pinned: without renewal info grace cannot be extended, so ExpiresAt is the
-	// (already past) transaction expiry and the entitlement is not Active.
-	assert.Equal(t, entitlements.StateGrace, ev.State)
-	assert.True(t, time.UnixMilli(1759000000000).Equal(ev.ExpiresAt))
-	assert.False(t, entitlements.Entitlement{State: ev.State, ExpiresAt: ev.ExpiresAt}.Active(time.UnixMilli(1760000000000)))
+	// Pinned: without renewal info the grace end is unknown. Storing a grace
+	// state with a past expiry would silently deny access, so the event is
+	// refused loudly and the next notification repairs the state.
+	_, err := parserFor(ca).Parse(f.SignBody(t, ca))
+	require.ErrorIs(t, err, apple.ErrNoExpiry)
+	require.ErrorIs(t, err, entitlements.ErrUnsupported)
 }
 
 func TestGarbageInput(t *testing.T) {

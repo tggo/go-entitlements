@@ -12,7 +12,7 @@ import (
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
-	"github.com/tggo/go-entitlements/google/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/google"
 	"github.com/tggo/go-entitlements/internal/testutil"
 )
 
@@ -46,7 +46,7 @@ func TestParser_SubscriptionStates(t *testing.T) {
 			f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(fetchedSub(t, tc.fixture), nil)
 			body := testutil.GooglePushBody(t, "msg-1", testutil.GoogleFixture(t, "notif_subscription.json"))
 
-			ev, err := newParser(t, f, google.WithPackageName(pkg)).Parse(context.Background(), body)
+			ev, err := newParser(t, f).Parse(context.Background(), body)
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, ev.State)
@@ -126,9 +126,10 @@ func TestParser_NoLineItemsKeepsNotificationProductWhenNotGranting(t *testing.T)
 	assert.Empty(t, ev.UserID)
 }
 
-func TestParser_VoidedWithoutFetch(t *testing.T) {
+func TestParser_VoidedIsVerifiedByFetch(t *testing.T) {
 	t.Parallel()
-	f := mocks.NewMockSubscriptionsFetcher(t) // any call would fail the test
+	f := mocks.NewMockSubscriptionsFetcher(t)
+	f.EXPECT().GetV2(mock.Anything, pkg, "tok-1").Return(&google.SubscriptionPurchaseV2{SubscriptionState: google.StateExpired}, nil).Once()
 	body := testutil.GooglePushBody(t, "msg-v", testutil.GoogleFixture(t, "notif_voided.json"))
 
 	ev, err := newParser(t, f).Parse(context.Background(), body)
@@ -161,7 +162,7 @@ func TestParser_WrongPackage(t *testing.T) {
 	t.Parallel()
 	body := testutil.GooglePushBody(t, "m", testutil.GoogleFixture(t, "notif_wrong_package.json"))
 
-	_, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t), google.WithPackageName(pkg)).Parse(context.Background(), body)
+	_, err := newParser(t, mocks.NewMockSubscriptionsFetcher(t)).Parse(context.Background(), body)
 
 	assert.ErrorIs(t, err, google.ErrPackageMismatch)
 }

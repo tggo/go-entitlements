@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 
 	"github.com/tggo/go-entitlements/google"
-	"github.com/tggo/go-entitlements/google/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/google"
 	"github.com/tggo/go-entitlements/internal/testutil"
 )
 
@@ -42,7 +43,7 @@ func FuzzGoogleParse(f *testing.F) {
 		}
 		fetcher := mocks.NewMockSubscriptionsFetcher(t)
 		fetcher.EXPECT().GetV2(mock.Anything, mock.Anything, mock.Anything).Return(&purchase, nil).Maybe()
-		parser, err := google.NewParser(fetcher)
+		parser, err := google.NewParser(fetcher, "com.example.app", google.WithTimeFn(func() time.Time { return time.UnixMilli(1760436000000).Add(time.Hour) }))
 		if err != nil {
 			t.Fatal(err)
 		}

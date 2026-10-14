@@ -6,10 +6,14 @@ import (
 	"net/http"
 	"testing"
 
+	play "google.golang.org/api/androidpublisher/v3"
+	"google.golang.org/api/option"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tggo/go-entitlements/google"
+	"github.com/tggo/go-entitlements/google/androidpublisher"
 )
 
 func TestFetcher_ErrorClasses(t *testing.T) {
@@ -21,6 +25,7 @@ func TestFetcher_ErrorClasses(t *testing.T) {
 	}{
 		{http.StatusNotFound, google.ErrPurchaseNotFound, []error{google.ErrFetchConfig, google.ErrFetchTransient}},
 		{http.StatusGone, google.ErrPurchaseNotFound, nil},
+		{http.StatusBadRequest, google.ErrPurchaseInvalid, []error{google.ErrFetchTransient, google.ErrPurchaseNotFound}},
 		{http.StatusUnauthorized, google.ErrFetchConfig, []error{google.ErrPurchaseNotFound, google.ErrFetchTransient}},
 		{http.StatusForbidden, google.ErrFetchConfig, nil},
 		{http.StatusInternalServerError, google.ErrFetchTransient, []error{google.ErrPurchaseNotFound, google.ErrFetchConfig}},
@@ -53,4 +58,17 @@ func TestFetcher_TransportErrorIsTransient(t *testing.T) {
 	_, err := f.GetV2(ctx, "p", "t")
 
 	assert.ErrorIs(t, err, google.ErrFetchTransient)
+}
+
+// The token is part of the request URL; transport errors embed the URL.
+func TestFetcher_TransportErrorHasNoToken(t *testing.T) {
+	t.Parallel()
+	const token = "SECRETPURCHASETOKEN123"
+	svc, err := play.NewService(context.Background(), option.WithEndpoint("http://127.0.0.1:1"), option.WithoutAuthentication())
+	require.NoError(t, err)
+
+	_, err = androidpublisher.NewFetcher(svc).GetV2(context.Background(), "com.example.app", token)
+
+	require.ErrorIs(t, err, google.ErrFetchTransient)
+	assert.NotContains(t, err.Error(), token)
 }

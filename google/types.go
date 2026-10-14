@@ -86,21 +86,36 @@ type TestNotification struct {
 	Version string `json:"version"`
 }
 
-// Subscription states returned by purchases.subscriptionsv2.get.
+// State is a subscriptionsv2 subscriptionState value. It is a different type
+// from entitlements.State: it is Google's raw state, mapped by the Parser.
+type State string
+
+// Subscription states returned by purchases.subscriptionsv2.get
+// (https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2).
 const (
-	StatePending         = "SUBSCRIPTION_STATE_PENDING"
-	StateActive          = "SUBSCRIPTION_STATE_ACTIVE"
-	StatePaused          = "SUBSCRIPTION_STATE_PAUSED"
-	StateInGracePeriod   = "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"
-	StateOnHold          = "SUBSCRIPTION_STATE_ON_HOLD"
-	StateCanceled        = "SUBSCRIPTION_STATE_CANCELED"
-	StateExpired         = "SUBSCRIPTION_STATE_EXPIRED"
-	StatePendingCanceled = "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED"
+	// StatePending: created, awaiting first payment. Grants nothing.
+	StatePending State = "SUBSCRIPTION_STATE_PENDING"
+	// StateActive: active; at least one item is auto-renewing and not expired.
+	StateActive State = "SUBSCRIPTION_STATE_ACTIVE"
+	// StatePaused: paused by the user; no access.
+	StatePaused State = "SUBSCRIPTION_STATE_PAUSED"
+	// StateInGracePeriod: payment failed, Play still grants access. expiryTime
+	// is extended to the end of the grace period.
+	StateInGracePeriod State = "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"
+	// StateOnHold: account hold after grace; block access.
+	StateOnHold State = "SUBSCRIPTION_STATE_ON_HOLD"
+	// StateCanceled: auto-renew off, access continues until expiryTime.
+	StateCanceled State = "SUBSCRIPTION_STATE_CANCELED"
+	// StateExpired: expired; no access.
+	StateExpired State = "SUBSCRIPTION_STATE_EXPIRED"
+	// StatePendingCanceled: the pending purchase was canceled; the user keeps
+	// the previous subscription.
+	StatePendingCanceled State = "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED"
 )
 
 // SubscriptionPurchaseV2 is a trimmed subscriptionsv2.get response.
 type SubscriptionPurchaseV2 struct {
-	SubscriptionState          string                      `json:"subscriptionState"`
+	SubscriptionState          State                       `json:"subscriptionState"`
 	LinkedPurchaseToken        string                      `json:"linkedPurchaseToken,omitempty"`
 	LineItems                  []LineItem                  `json:"lineItems,omitempty"`
 	ExternalAccountIdentifiers *ExternalAccountIdentifiers `json:"externalAccountIdentifiers,omitempty"`
@@ -129,6 +144,10 @@ type LineItem struct {
 	ProductID string `json:"productId"`
 	// ExpiryTime is zero when Google omits it (e.g. a deferred replacement item).
 	ExpiryTime time.Time `json:"expiryTime"`
+	// LatestSuccessfulOrderID is the order of the most recent successful
+	// charge of this item. A voidedPurchaseNotification for any other order
+	// does not end the chain.
+	LatestSuccessfulOrderID string `json:"latestSuccessfulOrderId,omitempty"`
 }
 
 // ExternalAccountIdentifiers carries the developer-supplied account id.

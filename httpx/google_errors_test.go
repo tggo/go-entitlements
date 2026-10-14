@@ -12,8 +12,7 @@ import (
 
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
-	"github.com/tggo/go-entitlements/httpx"
-	"github.com/tggo/go-entitlements/httpx/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/httpx"
 )
 
 func TestGoogleHandler_FetchErrorClasses(t *testing.T) {
@@ -36,7 +35,7 @@ func TestGoogleHandler_FetchErrorClasses(t *testing.T) {
 			log, logs := newRecorder()
 			parser := mocks.NewMockGoogleParser(t)
 			parser.EXPECT().Parse(mock.Anything, []byte("body")).Return(entitlements.Event{}, tt.err)
-			h := httpx.NewGoogleHandler(parser, mocks.NewMockProcessor(t), log)
+			h := mustGoogle(t, parser, mocks.NewMockProcessor(t), log)
 
 			assert.Equal(t, tt.wantCode, post(h, "body").Code)
 

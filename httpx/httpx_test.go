@@ -16,7 +16,7 @@ import (
 	"github.com/tggo/go-entitlements"
 	"github.com/tggo/go-entitlements/google"
 	"github.com/tggo/go-entitlements/httpx"
-	"github.com/tggo/go-entitlements/httpx/mocks"
+	mocks "github.com/tggo/go-entitlements/internal/mocks/httpx"
 )
 
 var testEvent = entitlements.Event{ID: "e1", Source: entitlements.SourceApple, OriginalTxID: "tx", State: entitlements.StateActive}
@@ -58,7 +58,7 @@ func TestAppleHandler(t *testing.T) {
 				ent := &entitlements.Entitlement{State: entitlements.StateActive}
 				svc.EXPECT().Process(mock.Anything, tt.parseEv).Return(ent, tt.procErr)
 			}
-			h := httpx.NewAppleHandler(parser, svc, testLogger(t))
+			h := httpx.NewAppleHandler(parser, svc, httpx.WithLogger(testLogger(t)))
 			assert.Equal(t, tt.wantCode, post(h, "body").Code)
 		})
 	}
@@ -66,8 +66,8 @@ func TestAppleHandler(t *testing.T) {
 
 func TestHandlers_MethodAndBodyLimit(t *testing.T) {
 	t.Parallel()
-	apple := httpx.NewAppleHandler(mocks.NewMockAppleParser(t), mocks.NewMockProcessor(t), testLogger(t), httpx.WithMaxBodyBytes(4))
-	google := httpx.NewGoogleHandler(mocks.NewMockGoogleParser(t), mocks.NewMockProcessor(t), testLogger(t), httpx.WithMaxBodyBytes(4))
+	apple := httpx.NewAppleHandler(mocks.NewMockAppleParser(t), mocks.NewMockProcessor(t), httpx.WithLogger(testLogger(t)), httpx.WithMaxBodyBytes(4))
+	google := mustGoogle(t, mocks.NewMockGoogleParser(t), mocks.NewMockProcessor(t), testLogger(t), httpx.WithMaxBodyBytes(4))
 	for name, h := range map[string]http.Handler{"apple": apple, "google": google} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -112,7 +112,7 @@ func TestGoogleHandler(t *testing.T) {
 				ent := &entitlements.Entitlement{State: entitlements.StateActive}
 				svc.EXPECT().Process(mock.Anything, tt.parseEv).Return(ent, tt.procErr)
 			}
-			h := httpx.NewGoogleHandler(parser, svc, testLogger(t))
+			h := mustGoogle(t, parser, svc, testLogger(t))
 			assert.Equal(t, tt.wantCode, post(h, "body").Code)
 		})
 	}
@@ -123,7 +123,7 @@ func TestGoogleHandler_PushAuthenticator(t *testing.T) {
 	t.Run("rejected before body is parsed", func(t *testing.T) {
 		t.Parallel()
 		auth := func(*http.Request) error { return errors.New("bad token") }
-		h := httpx.NewGoogleHandler(mocks.NewMockGoogleParser(t), mocks.NewMockProcessor(t), testLogger(t), httpx.WithPushAuthenticator(auth))
+		h := mustGoogle(t, mocks.NewMockGoogleParser(t), mocks.NewMockProcessor(t), testLogger(t), httpx.WithPushAuthenticator(auth))
 		assert.Equal(t, http.StatusUnauthorized, post(h, "body").Code)
 	})
 	t.Run("accepted", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestGoogleHandler_PushAuthenticator(t *testing.T) {
 		auth := func(*http.Request) error { return nil }
 		parser := mocks.NewMockGoogleParser(t)
 		parser.EXPECT().Parse(mock.Anything, mock.Anything).Return(entitlements.Event{}, entitlements.ErrIgnored)
-		h := httpx.NewGoogleHandler(parser, mocks.NewMockProcessor(t), testLogger(t), httpx.WithPushAuthenticator(auth))
+		h := mustGoogle(t, parser, mocks.NewMockProcessor(t), testLogger(t), httpx.WithPushAuthenticator(auth))
 		assert.Equal(t, http.StatusOK, post(h, "body").Code)
 	})
 }
@@ -140,6 +140,6 @@ func TestNilLogger(t *testing.T) {
 	t.Parallel()
 	parser := mocks.NewMockAppleParser(t)
 	parser.EXPECT().Parse(mock.Anything).Return(entitlements.Event{}, entitlements.ErrIgnored)
-	h := httpx.NewAppleHandler(parser, mocks.NewMockProcessor(t), nil)
+	h := httpx.NewAppleHandler(parser, mocks.NewMockProcessor(t), httpx.WithLogger(nil))
 	require.Equal(t, http.StatusOK, post(h, "x").Code)
 }

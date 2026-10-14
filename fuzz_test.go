@@ -31,7 +31,7 @@ func FuzzApply(f *testing.F) {
 		ev := entitlements.Event{
 			ID: "e", Source: entitlements.SourceApple, OriginalTxID: "tx", State: entitlements.State(evState),
 			OccurredAt: time.UnixMilli(evAt).UTC(), ExpiresAt: time.UnixMilli(evExp).UTC(),
-			Restores: restores, Sandbox: sandbox,
+			Restores: restores, NoRevive: sandbox,
 		}
 		next, err := entitlements.Apply(cur, ev)
 		if cur != nil {

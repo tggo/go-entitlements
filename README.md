@@ -2,7 +2,7 @@
 
 A Go library that turns App Store Server Notifications V2 and Google Play Real-Time Developer Notifications into one ordered, idempotent subscription state per user and product. You mount two HTTP handlers, and your code asks one question: does this user currently have access to this product.
 
-Status: early, MVP. The core, both parsers, the in-memory and Postgres stores and the HTTP handlers are tested end to end, but the API may still change before v1.
+Status: v0. The core, both parsers, the in-memory and Postgres stores and the HTTP handlers are tested end to end, but the API may change between minor versions until v1. Changes are listed in the release notes.
 
 ## Why
 
@@ -22,36 +22,105 @@ Also handled: during a billing grace period `ExpiresAt` is extended to the grace
 go get github.com/tggo/go-entitlements
 ```
 
-Requires Go 1.26. For Postgres, run `store.Migrate` once at startup; it is idempotent and safe to call from several instances.
+Requires Go 1.26. For Postgres, run `store.Migrate` once at startup; it is idempotent and safe to call from several instances. The tables are `entitlements`, `processed_events` and `entitlements_schema_migrations`; use a dedicated schema (search_path) if the names collide with yours.
 
 ## Quickstart
 
+Apple only, in-memory store. The snippets below are compiled as Examples in `quickstart_example_test.go`, and a test fails if the README drifts from them.
+
+<!-- example:Example_appleOnly -->
 ```go
-pool, _ := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
-store := postgres.New(pool)
-_ = store.Migrate(ctx)
-svc := entitlements.NewService(store, entitlements.WithLogger(log))
+ctx := context.Background()
+logger := slog.Default()
 
-appleVerifier, _ := apple.NewVerifier("com.example.app") // bundle ID is required; add apple.WithEnvironment("Production") to reject sandbox
-appleParser := apple.NewParser(appleVerifier)
-play, _ := androidpublisher.NewService(ctx) // credentials from GOOGLE_APPLICATION_CREDENTIALS
-googleParser := google.NewParser(google.NewAndroidPublisherFetcher(play), google.WithPackageName("com.example.app"))
+svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
 
+verifier, err := apple.NewVerifier("com.example.app", // the bundle ID is required
+	apple.WithEnvironment(entitlements.EnvironmentProduction)) // reject Sandbox and TestFlight
+if err != nil {
+	log.Fatal(err)
+}
 mux := http.NewServeMux()
-mux.Handle("/webhooks/apple", httpx.NewAppleHandler(appleParser, svc, log))
-mux.Handle("/webhooks/google", httpx.NewGoogleHandler(googleParser, svc, log,
-    httpx.WithPushAuthenticator(httpx.NewPubSubAuthenticator(audience, pushServiceAccountEmail))))
+mux.Handle("/webhooks/apple", httpx.NewAppleHandler(apple.NewParser(verifier), svc, httpx.WithLogger(logger)))
+go func() { log.Fatal(http.ListenAndServe(":8080", mux)) }()
 
-ok, _ := svc.IsActive(ctx, userID, "com.example.pro.monthly")
+// Later, in your own handlers: does this user have access?
+ok, err := svc.IsActive(ctx, "7e3fb20b-4cdb-47cc-936d-99d65f608138", "com.example.pro.monthly")
+if err != nil {
+	log.Fatal(err)
+}
+log.Println("has access:", ok)
 ```
 
-The user is identified by `appAccountToken` on Apple and `obfuscatedExternalAccountId` on Google. Set it when the purchase is made in your app; notifications without it cannot be attributed and are acknowledged and logged.
+The same `Service` on Postgres:
+
+<!-- example:Example_postgres -->
+```go
+ctx := context.Background()
+logger := slog.Default()
+
+pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+if err != nil {
+	log.Fatal(err)
+}
+defer pool.Close()
+store := postgres.New(pool)
+if err := store.Migrate(ctx); err != nil { // idempotent, safe from several instances
+	log.Fatal(err)
+}
+svc := entitlements.NewService(store, entitlements.WithLogger(logger))
+
+list, err := svc.ListByUser(ctx, "7e3fb20b-4cdb-47cc-936d-99d65f608138")
+if err != nil {
+	log.Fatal(err)
+}
+for _, e := range list {
+	log.Println(e.ProductID, e.State, e.ExpiresAt)
+}
+```
+
+Google Play. Create a Pub/Sub push subscription that points at the endpoint and sends an OIDC token (audience = the endpoint URL, service account = the one you pass to `pubsubauth.New`). The service account behind `androidpublisher.NewService` needs permission to view financial data for the app in the Play Console. A push endpoint without authentication is refused at construction: anyone who knew a purchase token could otherwise forge a refund.
+
+<!-- example:Example_google -->
+```go
+ctx := context.Background()
+logger := slog.Default()
+svc := entitlements.NewService(memory.New(), entitlements.WithLogger(logger))
+
+playAPI, err := play.NewService(ctx) // credentials from GOOGLE_APPLICATION_CREDENTIALS
+if err != nil {
+	log.Fatal(err)
+}
+parser, err := google.NewParser(androidpublisher.NewFetcher(playAPI), "com.example.app")
+if err != nil {
+	log.Fatal(err)
+}
+// The Pub/Sub push subscription must send an OIDC token for this audience
+// and service account; the handler refuses to start without a check.
+auth, err := pubsubauth.New("https://example.com/webhooks/google", "push@my-project.iam.gserviceaccount.com")
+if err != nil {
+	log.Fatal(err)
+}
+handler, err := httpx.NewGoogleHandler(parser, svc, httpx.WithLogger(logger), httpx.WithPushAuthenticator(auth))
+if err != nil {
+	log.Fatal(err)
+}
+http.Handle("/webhooks/google", handler)
+```
+
+`Service` has `Process` (used by the handlers), `IsActive(ctx, userID, productID)`, `Get(ctx, source, originalTxID)` and `ListByUser(ctx, userID)`.
+
+The user is identified by `appAccountToken` on Apple and `obfuscatedExternalAccountId` on Google. Set it when the purchase is made in your app. A notification without it is still applied, keyed by the transaction (`originalTransactionId` or purchase token) with an empty `UserID`, and the service logs a warning. `ListByUser("")` returns nothing, so attribute these with `Get` and your own transaction-to-user table. Treat the token as a hint from the client, not as authentication: a client can send someone else's UUID.
+
+### Sandbox and test purchases
+
+Sandbox and TestFlight purchases on Apple and license-tester purchases on Google are free. `Event.Environment` says where a purchase was made (`Production`, `Sandbox`, `Xcode`, `LocalTesting`, `GoogleTest`; empty means production). By default `Service.Process` returns `ErrIgnored` for non-production events and `IsActive` skips non-production entitlements. Build the service with `entitlements.WithAllowSandbox()` in test or staging deployments. Pin the Apple verifier with `apple.WithEnvironment` as well.
 
 A runnable server with Postgres, both webhooks and `GET /entitlements?user_id=` is in `examples/server`. To try it locally without Apple:
 
 ```
 docker compose up -d --wait
-go run ./examples/sign-fixture -out demo subscribed did_renew   # throwaway CA + signed bodies
+go run ./examples/sign-fixture -out demo subscribed did_renew   # throwaway CA + signed bodies, dated now
 DATABASE_URL='postgres://postgres:postgres@localhost:5432/entitlements?sslmode=disable' \
 APPLE_BUNDLE_ID=com.example.app APPLE_ROOT_CA_PEM=demo/root.pem go run ./examples/server
 curl -X POST --data @demo/subscribed.json localhost:8080/webhooks/apple
@@ -68,15 +137,19 @@ Apple (`notificationType` / `subtype`):
 
 | Notification | State |
 |---|---|
-| SUBSCRIBED, DID_RENEW, OFFER_REDEEMED, DID_CHANGE_RENEWAL_PREF | active |
-| DID_FAIL_TO_RENEW with GRACE_PERIOD | grace |
+| SUBSCRIBED, DID_RENEW | active (the only events besides REFUND_REVERSED that can lift a refunded or revoked chain) |
+| DID_FAIL_TO_RENEW with GRACE_PERIOD | grace, until `gracePeriodExpiresDate` |
 | DID_FAIL_TO_RENEW, GRACE_PERIOD_EXPIRED | billing_retry |
 | EXPIRED | expired |
-| REFUND | refunded |
+| REFUND | refunded (a refund of an older transaction does not end a chain whose newer transaction runs on) |
 | REVOKE | revoked |
-| DID_CHANGE_RENEWAL_STATUS | derived from the transaction: active if it expires after the notification, else expired |
-| TEST | ignored |
+| REFUND_REVERSED | restores the chain; state from `data.status` |
+| DID_CHANGE_RENEWAL_STATUS, DID_CHANGE_RENEWAL_PREF, OFFER_REDEEMED, RENEWAL_EXTENDED | state from `data.status` (1 active, 2 expired, 3 billing retry, 4 grace, 5 revoked), else from `expiresDate` vs `signedDate`; never lift a refund |
+| any event whose transaction has `revocationDate` | refunded (revoked for REVOKE) |
+| TEST, ONE_TIME_CHARGE, RENEWAL_EXTENSION, REFUND_DECLINED, PRICE_INCREASE, PRICE_CHANGE, CONSUMPTION_REQUEST, METADATA_UPDATE, MIGRATION, EXTERNAL_PURCHASE_TOKEN, RESCIND_CONSENT, CHILD_CONSENT_REVOKED | ignored (your app must answer CONSUMPTION_REQUEST itself) |
 | anything else | unsupported |
+
+An active or grace event without an expiry date is refused (`apple.ErrNoExpiry`, HTTP 200 and an error log) instead of granting access forever.
 
 Google (`subscriptionsv2.get` `subscriptionState`; the notification type is not used):
 
@@ -110,14 +183,18 @@ A 4xx means the request was rejected for good, not that it will succeed on retry
 ## Testing
 
 ```
-make test-unit          # go test -short, no Docker
-make test-integration   # real Postgres 17 through Docker (dockertest)
+make test-unit          # go test -short -race, no Docker
+make test-integration   # real Postgres 17 through Docker (dockertest), -race
+make stress             # heavy concurrency stress on both stores
+make fuzz FUZZTIME=30s  # Go fuzz targets for the Apple and Google parsers and the state machine
 make lint               # golangci-lint
 make cover              # coverage, mocks and test helpers excluded
 make generate-mocks     # mockery
 ```
 
-Apple payloads in tests are signed by a generated test CA, so the full verification path runs; the verifier takes the root pool as an option. Google calls go through a mocked `SubscriptionsFetcher`. `e2e_integration_test.go` exercises HTTP, service and Postgres together: subscribe, renew and refund, duplicates, out-of-order delivery, a Google upgrade, and concurrent deliveries.
+Apple payloads in tests are signed by a generated test CA, so the full verification path runs; the verifier takes the root pool as an option. Apple's own libraries' test JWS verify against their test CA. Google calls go through a mocked `SubscriptionsFetcher`. `e2e_integration_test.go` exercises HTTP, service and Postgres together.
+
+The author also ran five real signed notifications from a live app (one Production TEST, four Sandbox) through the parser and the state machine. Those files are private and not in the repository, so no CI run or outside reader can reproduce that; `apple/real_fixtures_test.go` skips when they are absent. Google has never been run against live Play traffic.
 
 ## Writing your own store
 
@@ -136,11 +213,12 @@ func TestConformance(t *testing.T) {
 ## Known limitations
 
 - Apple: if a refund for an older transaction arrives before the renewal that superseded it, the chain is refunded and the later renewal is dropped as stale. Fixing this needs per-transaction tracking.
-- Google: the grace-period end is not documented in `subscriptionsv2`. During `IN_GRACE_PERIOD` access lasts until the later of `expiryTime` and notification time plus `WithGraceDuration` (default 7 days). Not yet confirmed against a live response.
 - Google: the library never acknowledges purchases. Acknowledge within 3 days or Google refunds them.
-- Apple: tested against real signed Sandbox and Production notifications from a live app. Google: tested against documented payloads and fixtures derived from public issues, not live traffic.
+- Google: one product is stored per purchase token (the line item with the latest expiry); add-on line items are not tracked separately.
+- `go.mod` says `go 1.26.0`, not `1.26`: the Google API dependencies require it.
+- Privacy: the Postgres store keeps each webhook body in `processed_events.raw` so that events can be audited. It can contain account identifiers; call `Store.Prune` on a schedule.
 
-See [docs/prior-art](docs/prior-art/README.md) for the issues in other libraries this one was tested against.
+Other libraries' issues this one was tested against are in [docs/prior-art](docs/prior-art/README.md). Contributing and security reporting: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md).
 
 ## Not in scope
 

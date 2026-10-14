@@ -31,6 +31,28 @@ const (
 	StateRevoked State = "revoked"
 )
 
+// Environment says where a purchase was made. The zero value means
+// production (the store did not say otherwise).
+type Environment string
+
+const (
+	// EnvironmentProduction is a real, paid purchase.
+	EnvironmentProduction Environment = "Production"
+	// EnvironmentSandbox is Apple Sandbox or TestFlight: free test purchases.
+	EnvironmentSandbox Environment = "Sandbox"
+	// EnvironmentXcode is a locally signed Xcode StoreKit test purchase.
+	EnvironmentXcode Environment = "Xcode"
+	// EnvironmentLocalTesting is a StoreKit local-testing purchase.
+	EnvironmentLocalTesting Environment = "LocalTesting"
+	// EnvironmentGoogleTest is a Google Play license-tester purchase
+	// (subscriptionsv2 testPurchase).
+	EnvironmentGoogleTest Environment = "GoogleTest"
+)
+
+// Sandbox reports whether the environment is anything but production.
+// Service ignores such events unless built WithAllowSandbox.
+func (e Environment) Sandbox() bool { return e != "" && e != EnvironmentProduction }
+
 // Source is the store an event came from.
 type Source string
 
@@ -58,15 +80,13 @@ type Event struct {
 	// REFUND_REVERSED). Without it only an active event can leave a terminal
 	// state; with it any non-terminal state can, if strictly newer.
 	Restores bool
-	// Sandbox marks a non-production purchase: Apple environment
-	// Sandbox/Xcode/LocalTesting, or Google testPurchase. Consumers should
-	// not grant paid access for it in production.
-	Sandbox bool
-	// Environment is the store environment the event came from ("Production",
-	// "Sandbox", "Xcode", "LocalTesting" for Apple). Empty if unknown.
-	// Verifiers can pin one; consumers sharing a store between environments
-	// should check it before calling Service.Process.
-	Environment string
+	// NoRevive marks an event that must never lift a refunded/revoked chain,
+	// even when its state is active. Apple sends bookkeeping notifications
+	// (AUTO_RENEW_DISABLED, plan changes, offers, extensions) after a refund;
+	// only a real purchase or renewal may bring the chain back.
+	NoRevive bool
+	// Environment is where the purchase was made. Empty means production.
+	Environment Environment
 	Raw         []byte
 }
 
@@ -80,8 +100,14 @@ type Entitlement struct {
 	ExpiresAt    time.Time
 	UpdatedAt    time.Time // OccurredAt of the last applied event
 	Version      int64
-	Sandbox      bool // from the last applied event, see Event.Sandbox
+	Environment  Environment // from the last applied event
 }
+
+// Sandbox reports whether this is a non-production entitlement.
+func (e Entitlement) Sandbox() bool { return e.Environment.Sandbox() }
+
+// Sandbox reports whether the event is a non-production purchase.
+func (e Event) Sandbox() bool { return e.Environment.Sandbox() }
 
 // Active reports whether the entitlement grants access at now.
 func (e Entitlement) Active(now time.Time) bool {

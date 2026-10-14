@@ -3,16 +3,17 @@
 test: test-unit test-integration
 
 test-unit:
-	go test -short -count=1 ./...
+	go test -short -race -count=1 ./...
 
 # Needs Docker (Postgres 17 via dockertest).
 test-integration:
 	go test -p=1 -count=1 -tags=integration ./...
 
 # Heavy concurrency stress on the memory and Postgres stores, with the race
-# detector (Docker needed for Postgres). Lighter: STORETEST_STRESS=light.
+# detector (Docker needed for Postgres). Lighter: make stress STORETEST_STRESS=light.
+STORETEST_STRESS ?= heavy
 stress:
-	STORETEST_STRESS=heavy go test -race -count=1 -p=1 -tags=integration -v -run 'TestStress|TestStoreSuite/TestStress' ./store/...
+	STORETEST_STRESS=$(STORETEST_STRESS) go test -race -count=1 -p=1 -tags=integration -v -run 'TestStress|TestStoreSuite/TestStress' ./store/...
 
 # Go fuzzing, FUZZTIME per target (not run in CI).
 FUZZTIME ?= 30s
@@ -31,7 +32,7 @@ generate-mocks:
 # Coverage over unit + integration tests, mocks and test helpers excluded.
 cover:
 	go test -p=1 -count=1 -tags=integration -coverpkg=./... -coverprofile=cover.out ./...
-	grep -v -e '/mocks/' -e '/internal/testutil/' -e '/examples/' cover.out > cover.filtered.out
+	grep -v -e '/internal/mocks/' -e '/internal/testutil/' -e '/examples/' cover.out > cover.filtered.out
 	go tool cover -func=cover.filtered.out | tail -1
 
 run-example:
